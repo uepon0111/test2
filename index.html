@@ -1458,6 +1458,12 @@
       .inner-tabs::-webkit-scrollbar { height:0; }
       .page-header h2 { font-size:15px; }
       .section-card { padding:14px 15px; }
+      /* Hide column-toggle button on portrait (always 2 cols) */
+      #edit-cols-btn { display:none !important; }
+
+      /* Slightly tighter card gap on mobile */
+      .edit-grid { gap:8px !important; }
+
       /* JS adds .page-hidden to mini-player when not on player page */
       .mini-player.page-hidden { display:none !important; }
     }
@@ -2239,21 +2245,22 @@
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js', { scope: './' })
+      // Derive the correct sw.js URL relative to this page,
+      // so it works on both root domains and subdirectory GitHub Pages.
+      // e.g. https://user.github.io/repo/ → /repo/sw.js
+      const swUrl = new URL('./sw.js', document.baseURI).href;
+
+      navigator.serviceWorker.register(swUrl)
         .then(reg => {
           console.log('[SW] Registered, scope:', reg.scope);
-          // Check for updates
           reg.addEventListener('updatefound', () => {
             const nw = reg.installing;
             nw.addEventListener('statechange', () => {
               if (nw.state === 'installed' && navigator.serviceWorker.controller) {
-                // New content available — show toast when App is ready
-                const notify = () => {
+                setTimeout(() => {
                   if (typeof UI !== 'undefined')
                     UI.toast('アプリを更新しました。再読み込みで反映されます。');
-                };
-                // Wait for App to boot
-                setTimeout(notify, 3000);
+                }, 3000);
               }
             });
           });
