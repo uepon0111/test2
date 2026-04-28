@@ -28,6 +28,8 @@
       --white: #FFFFFF;
       --gold: #F59E0B;
       --gold-light: #FEF3C7;
+      --red: #EF4444;
+      --red-light: #FEE2E2;
       --green: #10B981;
       --font: 'Sora', 'Hiragino Sans', 'Noto Sans JP', 'Meiryo', sans-serif;
       --radius-xs: 6px;
@@ -45,9 +47,7 @@
     html { scroll-behavior: smooth; }
     body {
       font-family: var(--font);
-      background:
-        radial-gradient(circle at top, rgba(59,130,246,0.10), transparent 38%),
-        linear-gradient(180deg, #F8FBFF 0%, #FFFFFF 28%, #FFFFFF 100%);
+      background: var(--white);
       color: var(--slate-900);
       min-height: 100vh;
       overflow-x: hidden;
@@ -57,12 +57,7 @@
     input { font-family: var(--font); }
 
     /* ===== SCREEN MANAGER ===== */
-    .screen {
-      display: none;
-      flex-direction: column;
-      min-height: 100vh;
-      background: transparent;
-    }
+    .screen { display: none; flex-direction: column; min-height: 100vh; }
     .screen.active { display: flex; }
 
     /* ===== LOADING ===== */
@@ -84,10 +79,8 @@
 
     /* ===== HEADER ===== */
     .app-header {
-      background: rgba(255,255,255,0.82);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border-bottom: 1px solid rgba(226,232,240,0.85);
+      background: var(--white);
+      border-bottom: 1px solid var(--slate-200);
       padding: 0 16px;
       height: 54px;
       display: flex;
@@ -122,12 +115,8 @@
     }
     .icon-btn:hover { background: var(--slate-100); color: var(--slate-700); }
     .icon-btn.is-fav { color: var(--gold); }
-    .icon-btn.is-important { color: var(--green); }
+    .icon-btn.is-imp { color: var(--red); }
     .icon-btn.is-revealed { color: var(--blue-500); }
-    .icon-btn.is-locked {
-      opacity: 0.35;
-      cursor: not-allowed;
-    }
 
     /* ===== PRIMARY BUTTON ===== */
     .btn-primary {
@@ -202,18 +191,18 @@
       display: flex; flex-direction: column; gap: 14px;
     }
     .home-card {
-      background: rgba(255,255,255,0.86);
-      border: 1px solid rgba(226,232,240,0.9);
+      background: var(--white);
+      border: 1.5px solid var(--slate-200);
       border-radius: var(--radius-lg);
       padding: 20px;
       display: flex; align-items: center; gap: 16px;
       cursor: pointer;
       transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
-      box-shadow: 0 10px 30px rgba(15,23,42,0.06);
+      box-shadow: var(--shadow-sm);
     }
     .home-card:hover {
       border-color: var(--blue-400);
-      box-shadow: 0 14px 34px rgba(15,23,42,0.10);
+      box-shadow: var(--shadow-lg);
       transform: translateY(-2px);
     }
     .home-card:active { transform: translateY(0); }
@@ -296,7 +285,19 @@
       color: var(--white);
     }
     .chip.fav-chip.active { background: var(--gold); border-color: var(--gold); }
-    .chip#chip-imp.active { background: var(--green); border-color: var(--green); }
+    .chip.imp-chip.active { background: var(--red); border-color: var(--red); }
+
+    /* Left button group in word-item */
+    .word-btns-left {
+      display: flex; flex-direction: row; gap: 2px; flex-shrink: 0;
+    }
+
+    /* Action buttons group in q-card */
+    .q-card-actions {
+      position: absolute; top: 14px; right: 14px;
+      display: flex; flex-direction: row; gap: 4px;
+    }
+    .q-card-actions .icon-btn { width: 38px; height: 38px; font-size: 1rem; }
 
     .list-meta {
       padding: 7px 16px;
@@ -311,12 +312,12 @@
 
     .word-item {
       display: flex; align-items: flex-start;
-      padding: 12px 16px;
+      padding: 11px 16px;
       border-bottom: 1px solid var(--slate-100);
-      gap: 8px;
+      gap: 6px;
       transition: background 0.1s;
     }
-    .word-item:hover { background: linear-gradient(90deg, rgba(59,130,246,0.04), rgba(255,255,255,0)); }
+    .word-item:hover { background: var(--slate-50); }
     .word-item:last-child { border-bottom: none; }
 
     .word-num-badge {
@@ -342,13 +343,7 @@
     }
     .word-jp.concealed { display: none; }
 
-    /* Desktop: inline meaning */
-    @media (min-width: 768px) {
-      .word-item { padding: 11px 20px; }
-      .word-body { flex-direction: row; align-items: center; gap: 0; }
-      .word-en { min-width: 160px; flex-shrink: 0; padding-top: 0; }
-      .word-jp { margin-top: 0; flex: 1; padding-left: 12px; border-left: 1px solid var(--slate-100); margin-left: 12px; }
-    }
+    /* word-body inline layout now in 568px breakpoint */
 
     .empty-state {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -373,11 +368,10 @@
     }
 
     .setup-card {
-      background: rgba(255,255,255,0.9);
-      border: 1px solid rgba(226,232,240,0.95);
+      background: var(--white);
+      border: 1.5px solid var(--slate-200);
       border-radius: var(--radius);
       padding: 16px;
-      box-shadow: 0 8px 24px rgba(15,23,42,0.04);
     }
     .setup-card-label {
       font-size: 0.72rem; font-weight: 700;
@@ -450,24 +444,21 @@
 
     .q-card {
       width: 100%; max-width: 520px;
-      background: rgba(255,255,255,0.9);
-      border: 1px solid rgba(226,232,240,0.95);
+      background: var(--white);
+      border: 2px solid var(--slate-200);
       border-radius: var(--radius-lg);
       padding: 32px 24px 28px;
-      box-shadow: 0 14px 36px rgba(15,23,42,0.10);
+      box-shadow: var(--shadow-lg);
       display: flex; flex-direction: column; align-items: center;
       gap: 20px; position: relative;
       min-height: 200px; text-align: center;
     }
-    .q-fav-btn {
-      position: absolute; top: 14px; right: 14px;
-      width: 38px; height: 38px; font-size: 1rem;
-    }
+    /* q-fav-btn positioning now handled by .q-card-actions wrapper */
     .q-word {
       font-size: 2.4rem; font-weight: 800;
       color: var(--slate-900); letter-spacing: -0.04em;
       word-break: break-word; line-height: 1.15;
-      padding: 0 40px;
+      padding: 0 96px 0 8px;
     }
     .q-meaning {
       font-size: 0.95rem; color: var(--slate-500);
@@ -529,56 +520,38 @@
     /* ================================================================
        DESKTOP / LANDSCAPE TWEAKS
     ================================================================ */
+    /* 568px+: landscape phones & tablets */
+    @media (min-width: 568px) {
+      .list-controls { flex-direction: row; flex-wrap: wrap; align-items: center; padding: 12px 20px; }
+      .search-wrap { flex: 1; min-width: 180px; }
+      .list-meta { padding: 8px 20px; }
+      .word-item { padding: 11px 20px; }
+      .word-body { flex-direction: row; align-items: center; gap: 0; }
+      .word-en { min-width: 140px; flex-shrink: 0; padding-top: 0; }
+      .word-jp { margin-top: 0; flex: 1; padding-left: 12px; border-left: 1px solid var(--slate-100); margin-left: 12px; }
+    }
+    /* 768px+: desktop */
     @media (min-width: 768px) {
       .app-header { padding: 0 24px; height: 58px; }
-      .list-controls { flex-direction: row; flex-wrap: wrap; align-items: center; padding: 14px 24px; }
-      .search-wrap { flex: 1; min-width: 200px; }
+      .list-controls { padding: 14px 24px; }
       .list-meta { padding: 8px 24px; }
+      .word-item { padding: 11px 24px; }
+      .word-en { min-width: 160px; }
       #quiz-panel-setup { padding: 28px 24px 48px; }
       #quiz-panel-active { padding: 24px 24px 40px; gap: 18px; }
       .q-card { padding: 40px 36px 36px; min-height: 240px; }
-      .q-word { font-size: 3rem; }
+      .q-word { font-size: 3rem; padding: 0 104px 0 8px; }
       .q-nav-btn { flex: none; min-width: 120px; }
       .q-nav { justify-content: center; }
     }
+    /* compact landscape (very short viewport) */
+    @media (max-height: 480px) {
+      #quiz-panel-active { padding: 8px 16px 12px; gap: 8px; }
+      .q-card { min-height: 120px; padding: 16px 24px 14px; }
+      .q-word { font-size: 1.8rem; }
+    }
     @media (min-width: 1024px) {
       #screen-list { max-width: 900px; margin: 0 auto; width: 100%; align-self: center; }
-    }
-    @media (min-width: 1024px) and (orientation: landscape) {
-      #screen-list { max-width: 1100px; padding-left: 20px; padding-right: 20px; }
-      .word-item {
-        padding-top: 14px;
-        padding-bottom: 14px;
-      }
-      .word-num-badge { min-width: 36px; }
-      #quiz-panel-setup {
-        padding: 28px 20px 44px;
-      }
-      .setup-inner {
-        max-width: 920px;
-        display: grid;
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 14px;
-      }
-      .setup-card { height: 100%; }
-      .resume-box, .start-actions { grid-column: 1 / -1; }
-      .start-actions {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-      }
-      #quiz-panel-active {
-        padding: 24px 24px 34px;
-      }
-      .q-card {
-        max-width: 720px;
-        min-height: 240px;
-        padding: 38px 34px 32px;
-      }
-      .q-controls {
-        max-width: 720px;
-      }
-      .q-word { font-size: clamp(2.1rem, 3.8vw, 3.2rem); }
-      .q-meaning { font-size: 1rem; }
     }
   </style>
 </head>
@@ -637,11 +610,14 @@
       </button>
     </div>
     <div class="chips-row">
-      <button class="chip fav-chip" id="chip-fav" onclick="List.toggleFavFilter()">
+      <button class="chip active" id="chip-all" onclick="List.setFilter('all')">
+        <i class="fa-solid fa-list-ul"></i>全て
+      </button>
+      <button class="chip fav-chip" id="chip-fav" onclick="List.setFilter('fav')">
         <i class="fa-solid fa-star"></i>お気に入り
       </button>
-      <button class="chip" id="chip-imp" onclick="List.toggleImportantFilter()">
-        <i class="fa-solid fa-circle-exclamation"></i>重要
+      <button class="chip imp-chip" id="chip-imp" onclick="List.setFilter('imp')">
+        <i class="fa-solid fa-bookmark"></i>重要
       </button>
       <button class="chip active" id="chip-asc" onclick="List.setSort('asc')">
         <i class="fa-solid fa-arrow-up-short-wide"></i>昇順
@@ -680,6 +656,9 @@
           </button>
           <button class="opt-btn" id="src-fav" onclick="Quiz.setSrc('fav')">
             <i class="fa-solid fa-star"></i>お気に入りのみ
+          </button>
+          <button class="opt-btn" id="src-imp" onclick="Quiz.setSrc('imp')">
+            <i class="fa-solid fa-bookmark"></i>重要のみ
           </button>
         </div>
       </div>
@@ -731,12 +710,14 @@
       <div class="q-wordnum" id="q-wordnum">#—</div>
     </div>
     <div class="q-card">
-      <button class="icon-btn q-important-btn" id="q-important-btn" onclick="Quiz.toggleImportant(event)" title="重要">
-        <i class="fa-regular fa-circle-exclamation"></i>
-      </button>
-      <button class="icon-btn q-fav-btn" id="q-fav-btn" onclick="Quiz.toggleFav()" title="お気に入り">
-        <i class="fa-regular fa-star"></i>
-      </button>
+      <div class="q-card-actions">
+        <button class="icon-btn q-fav-btn" id="q-fav-btn" onclick="Quiz.toggleFav()" title="お気に入り">
+          <i class="fa-regular fa-star"></i>
+        </button>
+        <button class="icon-btn q-imp-btn" id="q-imp-btn" onclick="Quiz.toggleImp()" title="重要">
+          <i class="fa-regular fa-bookmark"></i>
+        </button>
+      </div>
       <div class="q-word" id="q-word">—</div>
       <div class="q-meaning hidden" id="q-meaning">—</div>
     </div>
@@ -776,11 +757,11 @@
 /* ============================================================
    DATA & STORAGE
 ============================================================ */
-const SK = { favs: 'vt_favs', imp: 'vt_imp', prog: 'vt_prog' };
+const SK = { favs: 'vt_favs', imps: 'vt_imps', prog: 'vt_prog' };
 
 let allWords = [];    // [{id, word, meaning}]
 let favSet = new Set();
-let importantSet = new Set();
+let impSet = new Set();
 
 function saveFavs() {
   try { localStorage.setItem(SK.favs, JSON.stringify([...favSet])); } catch(e) {}
@@ -791,18 +772,14 @@ function loadFavs() {
     if (d) favSet = new Set(JSON.parse(d));
   } catch(e) { favSet = new Set(); }
 }
-function saveImportant() {
-  try { localStorage.setItem(SK.imp, JSON.stringify([...importantSet])); } catch(e) {}
+function saveImps() {
+  try { localStorage.setItem(SK.imps, JSON.stringify([...impSet])); } catch(e) {}
 }
-function loadImportant() {
+function loadImps() {
   try {
-    const d = localStorage.getItem(SK.imp);
-    if (d) importantSet = new Set(JSON.parse(d));
-  } catch(e) { importantSet = new Set(); }
-}
-function syncImportantWithFavs() {
-  importantSet = new Set([...importantSet].filter(id => favSet.has(id)));
-  saveImportant();
+    const d = localStorage.getItem(SK.imps);
+    if (d) impSet = new Set(JSON.parse(d));
+  } catch(e) { impSet = new Set(); }
 }
 function saveProg(data) {
   try { localStorage.setItem(SK.prog, JSON.stringify(data)); } catch(e) {}
@@ -874,8 +851,7 @@ const App = {
 ============================================================ */
 const List = {
   search: '',
-  favOnly: false,
-  impOnly: false,
+  filter: 'all',
   sort: 'asc',
   revealed: new Set(),
   _debounce: null,
@@ -899,15 +875,11 @@ const List = {
     this.render();
   },
 
-  toggleFavFilter() {
-    this.favOnly = !this.favOnly;
-    document.getElementById('chip-fav').classList.toggle('active', this.favOnly);
-    this.render();
-  },
-
-  toggleImportantFilter() {
-    this.impOnly = !this.impOnly;
-    document.getElementById('chip-imp').classList.toggle('active', this.impOnly);
+  setFilter(f) {
+    this.filter = f;
+    ['all','fav','imp'].forEach(x =>
+      document.getElementById('chip-' + x).classList.toggle('active', x === f)
+    );
     this.render();
   },
 
@@ -921,8 +893,8 @@ const List = {
 
   getWords() {
     let w = allWords.filter(x => {
-      if (this.favOnly && !favSet.has(x.id)) return false;
-      if (this.impOnly && !importantSet.has(x.id)) return false;
+      if (this.filter === 'fav' && !favSet.has(x.id)) return false;
+      if (this.filter === 'imp' && !impSet.has(x.id)) return false;
       if (!this.search) return true;
       const q = this.search;
       return x.id.toString().includes(q) ||
@@ -952,24 +924,26 @@ const List = {
     const frag = document.createDocumentFragment();
     words.forEach(w => {
       const isFav = favSet.has(w.id);
+      const isImp = impSet.has(w.id);
       const isRev = this.revealed.has(w.id);
       const div = document.createElement('div');
       div.className = 'word-item';
       div.dataset.wid = w.id;
-      const isImp = importantSet.has(w.id);
       div.innerHTML =
-        `<button class="icon-btn ${isFav?'is-fav':''}" onclick="List.toggleFav(${w.id},this)" title="お気に入り">
-          <i class="fa-${isFav?'solid':'regular'} fa-star"></i>
-        </button>
-        <button class="icon-btn ${isFav ? '' : 'is-locked'} ${isImp?'is-important':''}" onclick="List.toggleImportant(${w.id},this)" title="重要">
-          <i class="fa-${isImp?'solid':'regular'} fa-circle-exclamation"></i>
-        </button>
+        `<div class="word-btns-left">
+          <button class="icon-btn fav-btn ${isFav?'is-fav':''}" onclick="List.toggleFav(${w.id},this)" title="お気に入り">
+            <i class="fa-${isFav?'solid':'regular'} fa-star"></i>
+          </button>
+          <button class="icon-btn imp-btn ${isImp?'is-imp':''}" onclick="List.toggleImp(${w.id},this)" title="重要">
+            <i class="fa-${isImp?'solid':'regular'} fa-bookmark"></i>
+          </button>
+        </div>
         <span class="word-num-badge">${w.id}</span>
         <div class="word-body">
           <span class="word-en">${esc(w.word)}</span>
           <span class="word-jp ${isRev?'':'concealed'}">${esc(w.meaning)}</span>
         </div>
-        <button class="icon-btn ${isRev?'is-revealed':''}" onclick="List.toggleMeaning(${w.id},this)" title="意味の表示切替">
+        <button class="icon-btn eye-btn ${isRev?'is-revealed':''}" onclick="List.toggleMeaning(${w.id},this)" title="意味の表示切替">
           <i class="fa-${isRev?'solid':'regular'} fa-eye"></i>
         </button>`;
       frag.appendChild(div);
@@ -981,34 +955,43 @@ const List = {
   toggleFav(id, btn) {
     if (favSet.has(id)) {
       favSet.delete(id);
-      importantSet.delete(id);
       btn.classList.remove('is-fav');
-      btn.innerHTML='<i class="fa-regular fa-star"></i>';
+      btn.innerHTML = '<i class="fa-regular fa-star"></i>';
+      // Also remove imp when fav is removed
+      if (impSet.has(id)) {
+        impSet.delete(id);
+        saveImps();
+        const row = btn.closest('.word-item');
+        const impBtn = row ? row.querySelector('.imp-btn') : null;
+        if (impBtn) {
+          impBtn.classList.remove('is-imp');
+          impBtn.innerHTML = '<i class="fa-regular fa-bookmark"></i>';
+        }
+        if (typeof Quiz !== 'undefined') Quiz.syncImpBtn(id);
+      }
     } else {
       favSet.add(id);
       btn.classList.add('is-fav');
-      btn.innerHTML='<i class="fa-solid fa-star"></i>';
+      btn.innerHTML = '<i class="fa-solid fa-star"></i>';
     }
     saveFavs();
-    syncImportantWithFavs();
-    this.updateFavRow(id);
-    // Sync quiz fav button if same word is shown
     if (typeof Quiz !== 'undefined') Quiz.syncFavBtn(id);
   },
 
-  toggleImportant(id, btn) {
+  toggleImp(id, btn) {
+    // Only react if fav is set
     if (!favSet.has(id)) return;
-    if (importantSet.has(id)) {
-      importantSet.delete(id);
-      btn.classList.remove('is-important');
-      btn.innerHTML='<i class="fa-regular fa-circle-exclamation"></i>';
+    if (impSet.has(id)) {
+      impSet.delete(id);
+      btn.classList.remove('is-imp');
+      btn.innerHTML = '<i class="fa-regular fa-bookmark"></i>';
     } else {
-      importantSet.add(id);
-      btn.classList.add('is-important');
-      btn.innerHTML='<i class="fa-solid fa-circle-exclamation"></i>';
+      impSet.add(id);
+      btn.classList.add('is-imp');
+      btn.innerHTML = '<i class="fa-solid fa-bookmark"></i>';
     }
-    saveImportant();
-    if (typeof Quiz !== 'undefined') Quiz.syncImportantBtn(id);
+    saveImps();
+    if (typeof Quiz !== 'undefined') Quiz.syncImpBtn(id);
   },
 
   toggleMeaning(id, btn) {
@@ -1029,22 +1012,21 @@ const List = {
   updateFavRow(id) {
     const row = document.querySelector(`.word-item[data-wid="${id}"]`);
     if (!row) return;
-    const btn = row.querySelector('.icon-btn');
+    const btn = row.querySelector('.fav-btn');
+    if (!btn) return;
     const isFav = favSet.has(id);
     btn.classList.toggle('is-fav', isFav);
     btn.innerHTML = `<i class="fa-${isFav?'solid':'regular'} fa-star"></i>`;
-    const impBtn = row.querySelectorAll('.icon-btn')[1];
-    if (impBtn) {
-      impBtn.classList.toggle('is-locked', !isFav);
-      if (!isFav) {
-        impBtn.classList.remove('is-important');
-        impBtn.innerHTML = '<i class="fa-regular fa-circle-exclamation"></i>';
-      } else {
-        const isImp = importantSet.has(id);
-        impBtn.classList.toggle('is-important', isImp);
-        impBtn.innerHTML = `<i class="fa-${isImp?'solid':'regular'} fa-circle-exclamation"></i>`;
-      }
-    }
+  },
+
+  updateImpRow(id) {
+    const row = document.querySelector(`.word-item[data-wid="${id}"]`);
+    if (!row) return;
+    const btn = row.querySelector('.imp-btn');
+    if (!btn) return;
+    const isImp = impSet.has(id);
+    btn.classList.toggle('is-imp', isImp);
+    btn.innerHTML = `<i class="fa-${isImp?'solid':'regular'} fa-bookmark"></i>`;
   },
 };
 
@@ -1067,6 +1049,7 @@ const Quiz = {
     this.src = s;
     document.getElementById('src-all').classList.toggle('sel', s==='all');
     document.getElementById('src-fav').classList.toggle('sel', s==='fav');
+    document.getElementById('src-imp').classList.toggle('sel', s==='imp');
   },
 
   setOrd(o) {
@@ -1094,9 +1077,10 @@ const Quiz = {
   _buildWords() {
     const from = parseInt(document.getElementById('range-from').value) || null;
     const to   = parseInt(document.getElementById('range-to').value) || null;
-    let pool = (this.src === 'fav')
-      ? allWords.filter(w => favSet.has(w.id))
-      : [...allWords];
+    let pool;
+    if (this.src === 'fav') pool = allWords.filter(w => favSet.has(w.id));
+    else if (this.src === 'imp') pool = allWords.filter(w => impSet.has(w.id));
+    else pool = [...allWords];
     if (from !== null) pool = pool.filter(w => w.id >= from);
     if (to   !== null) pool = pool.filter(w => w.id <= to);
     if (this.ord === 'asc')    pool.sort((a,b) => a.id - b.id);
@@ -1121,7 +1105,7 @@ const Quiz = {
     }
 
     if (this.words.length === 0) {
-      alert('出題できる単語がありません。\n範囲やお気に入りの設定を確認してください。');
+      alert('出題できる単語がありません。\n範囲・お気に入り・重要の設定を確認してください。');
       return;
     }
 
@@ -1147,6 +1131,8 @@ const Quiz = {
 
     // Fav btn
     this.syncFavBtn(w.id);
+    // Imp btn
+    this.syncImpBtn(w.id);
 
     // Prev btn
     const prev = document.getElementById('q-prev');
@@ -1197,27 +1183,31 @@ const Quiz = {
     const id = this.words[this.idx].id;
     if (favSet.has(id)) {
       favSet.delete(id);
-      importantSet.delete(id);
+      // Also remove imp when fav is removed
+      if (impSet.has(id)) {
+        impSet.delete(id);
+        saveImps();
+        this.syncImpBtn(id);
+        List.updateImpRow(id);
+      }
     } else {
       favSet.add(id);
     }
     saveFavs();
-    syncImportantWithFavs();
     this.syncFavBtn(id);
-    this.syncImportantBtn(id);
     List.updateFavRow(id);
   },
 
-  toggleImportant(e) {
-    if (e) e.preventDefault();
+  toggleImp() {
     if (!this.words.length) return;
     const id = this.words[this.idx].id;
+    // Only toggle if fav is set
     if (!favSet.has(id)) return;
-    if (importantSet.has(id)) importantSet.delete(id);
-    else importantSet.add(id);
-    saveImportant();
-    this.syncImportantBtn(id);
-    List.updateFavRow(id);
+    if (impSet.has(id)) impSet.delete(id);
+    else impSet.add(id);
+    saveImps();
+    this.syncImpBtn(id);
+    List.updateImpRow(id);
   },
 
   syncFavBtn(id) {
@@ -1232,15 +1222,13 @@ const Quiz = {
     }
   },
 
-  syncImportantBtn(id) {
+  syncImpBtn(id) {
     if (!document.getElementById('quiz-panel-active').classList.contains('hidden')) {
       if (this.words.length && this.words[this.idx].id === id) {
-        const btn = document.getElementById('q-important-btn');
-        const isFav = favSet.has(id);
-        const isImp = importantSet.has(id) && isFav;
-        btn.classList.toggle('is-important', isImp);
-        btn.classList.toggle('is-locked', !isFav);
-        btn.innerHTML = `<i class="fa-${isImp?'solid':'regular'} fa-circle-exclamation"></i>`;
+        const btn = document.getElementById('q-imp-btn');
+        const isImp = impSet.has(id);
+        btn.classList.toggle('is-imp', isImp);
+        btn.innerHTML = `<i class="fa-${isImp?'solid':'regular'} fa-bookmark"></i>`;
       }
     }
   },
@@ -1270,8 +1258,7 @@ const Quiz = {
 ============================================================ */
 (async () => {
   loadFavs();
-  loadImportant();
-  syncImportantWithFavs();
+  loadImps();
   await loadWords();
   document.getElementById('home-count').textContent = `${allWords.length} 単語`;
   document.getElementById('loading').classList.add('hide');
