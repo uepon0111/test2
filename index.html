@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title>動画ライブラリ</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <section id="libraryScreen" class="screen library-screen is-active" aria-label="ファイル一覧画面">
+      <header class="library-header">
+        <div class="title-block">
+          <h1>動画ライブラリ</h1>
+          <p>ファイル管理とタグ整理を1画面で行えます。</p>
+        </div>
+
+        <div class="toolbar">
+          <label class="icon-button file-add-button" title="ファイル追加" aria-label="ファイル追加">
+            <input id="fileInput" type="file" accept="video/*" multiple>
+            <span class="icon" data-icon="upload"></span>
+            <span class="button-text">追加</span>
+          </label>
+
+          <button id="openTagEditorButton" class="icon-button" type="button" title="タグ編集" aria-label="タグ編集">
+            <span class="icon" data-icon="tags"></span>
+            <span class="button-text">タグ編集</span>
+          </button>
+
+          <button id="clearFiltersButton" class="icon-button" type="button" title="絞り込み解除" aria-label="絞り込み解除">
+            <span class="icon" data-icon="clear"></span>
+            <span class="button-text">解除</span>
+          </button>
+        </div>
+      </header>
+
+      <section class="filters-panel" aria-label="検索と並べ替え">
+        <div class="field-group search-group">
+          <label for="searchInput">検索</label>
+          <div class="search-box">
+            <span class="inline-icon" data-icon="search"></span>
+            <input id="searchInput" type="search" placeholder="ファイル名・タグ名で検索">
+          </div>
+        </div>
+
+        <div class="field-group">
+          <label for="tagFilterSelect">タグ絞り込み</label>
+          <select id="tagFilterSelect"></select>
+        </div>
+
+        <div class="field-group">
+          <label for="sortSelect">並べ替え</label>
+          <select id="sortSelect">
+            <option value="addedDesc">追加順 ▼</option>
+            <option value="addedAsc">追加順 ▲</option>
+            <option value="nameAsc">名前順 ▲</option>
+            <option value="nameDesc">名前順 ▼</option>
+          </select>
+        </div>
+      </section>
+
+      <section id="librarySummary" class="summary-bar"></section>
+      <section id="videoGrid" class="video-grid" aria-live="polite"></section>
+    </section>
+
+    <section id="playerScreen" class="screen player-screen" aria-label="再生画面" hidden>
+      <div id="playerStage" class="player-stage">
+        <video id="playerVideo" playsinline preload="metadata"></video>
+
+        <button id="showUiButton" class="floating-show-ui icon-button circular" type="button" hidden title="UI表示" aria-label="UI表示">
+          <span class="icon" data-icon="eye"></span>
+        </button>
+
+        <div id="playerUi" class="player-ui">
+          <div class="player-top-row">
+            <button id="backToLibraryButton" class="icon-button circular" type="button" title="一覧画面に戻る" aria-label="一覧画面に戻る">
+              <span class="icon" data-icon="back"></span>
+            </button>
+
+            <div class="progress-wrap" aria-label="再生バー">
+              <div class="time-row">
+                <span id="currentTimeLabel">0:00</span>
+                <span id="durationLabel">0:00</span>
+              </div>
+              <div id="progressTrack" class="progress-track">
+                <div id="loopRange" class="loop-range" hidden></div>
+                <div id="bufferRange" class="buffer-range"></div>
+                <div id="progressRange" class="progress-range"></div>
+                <div id="markerLayer" class="marker-layer"></div>
+              </div>
+            </div>
+
+            <button id="playPauseButton" class="icon-button circular" type="button" title="再生/停止" aria-label="再生/停止">
+              <span class="icon" data-icon="play"></span>
+            </button>
+          </div>
+
+          <div class="player-controls-grid">
+            <div class="control-column left-column">
+              <button id="jumpBack3Button" class="icon-button circular" type="button" title="3秒戻す" aria-label="3秒戻す"><span class="icon" data-icon="rewind3"></span></button>
+              <button id="jumpForward3Button" class="icon-button circular" type="button" title="3秒進む" aria-label="3秒進む"><span class="icon" data-icon="forward3"></span></button>
+              <button id="jumpBack5Button" class="icon-button circular" type="button" title="5秒戻す" aria-label="5秒戻す"><span class="icon" data-icon="rewind5"></span></button>
+              <button id="jumpForward5Button" class="icon-button circular" type="button" title="5秒進む" aria-label="5秒進む"><span class="icon" data-icon="forward5"></span></button>
+              <button id="mirrorButton" class="icon-button circular" type="button" title="左右反転" aria-label="左右反転"><span class="icon" data-icon="mirror"></span></button>
+            </div>
+
+            <div class="control-column center-column"></div>
+
+            <div class="control-column right-column">
+              <button id="speedButton" class="icon-button circular speed-display" type="button" title="再生速度変更" aria-label="再生速度変更">
+                <span class="icon" data-icon="speed"></span>
+                <span id="speedValue">1.00x</span>
+              </button>
+
+              <div class="triple-actions">
+                <button id="markerJumpButton" class="icon-button circular" type="button" title="マーカージャンプ" aria-label="マーカージャンプ"><span class="icon" data-icon="marker-jump"></span></button>
+                <button id="markerAddButton" class="icon-button circular" type="button" title="マーカー設置" aria-label="マーカー設置"><span class="icon" data-icon="marker-add"></span></button>
+                <button id="markerDeleteButton" class="icon-button circular" type="button" title="マーカー削除" aria-label="マーカー削除"><span class="icon" data-icon="marker-delete"></span></button>
+              </div>
+
+              <div class="triple-actions">
+                <button id="loopSetButton" class="icon-button circular" type="button" title="ループ再生設定" aria-label="ループ再生設定"><span class="icon" data-icon="loop-set"></span></button>
+                <button id="loopToggleButton" class="icon-button circular" type="button" title="ループオンオフ" aria-label="ループオンオフ"><span class="icon" data-icon="loop-toggle"></span></button>
+                <button id="loopDeleteButton" class="icon-button circular" type="button" title="ループ削除" aria-label="ループ削除"><span class="icon" data-icon="loop-delete"></span></button>
+              </div>
+
+              <button id="hideUiButton" class="icon-button circular" type="button" title="UI非表示" aria-label="UI非表示"><span class="icon" data-icon="eye-off"></span></button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="busyOverlay" class="busy-overlay" hidden>
+      <div class="busy-card" role="status" aria-live="polite">
+        <div class="busy-header">
+          <span id="busyTitle">処理中</span>
+          <span id="busyPercent">0%</span>
+        </div>
+        <div class="busy-track"><div id="busyBar" class="busy-bar"></div></div>
+        <div id="busyMessage" class="busy-message">準備中</div>
+      </div>
+    </div>
+
+    <div id="modalOverlay" class="modal-overlay" hidden>
+      <div id="modalCard" class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle"></div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
