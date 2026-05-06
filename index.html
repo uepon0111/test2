@@ -2,43 +2,36 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="theme-color" content="#2563eb">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="VideoPlayer">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
 <title>VideoPlayer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap">
 <style>
-/* =====================================================
-   Variables
-   ===================================================== */
-:root {
-  --bg:          #ffffff;
-  --surface:     #f8f9fb;
-  --surface2:    #eef0f3;
-  --border:      #e2e8f0;
-  --border2:     #cbd5e1;
-  --text:        #111827;
-  --text2:       #4b5563;
-  --text3:       #9ca3af;
-  --accent:      #2563eb;
-  --accent-bg:   #dbeafe;
-  --danger:      #ef4444;
-  --danger-bg:   #fee2e2;
-  --shadow-sm:   0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
-  --shadow:      0 4px 8px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
-  --shadow-lg:   0 12px 30px rgba(0,0,0,.12),0 4px 10px rgba(0,0,0,.06);
-  --radius:      12px;
-  --radius-sm:   8px;
-  --btn:         44px;
-  --btn-sm:      36px;
-  --ctrl-gap:    8px;
-  --ctrl-pad:    12px;
-  --font:        'Noto Sans JP',sans-serif;
+/* =====================================================  Variables  */
+:root{
+  --bg:#ffffff; --surface:#f8f9fb; --surface2:#eef0f3;
+  --border:#e2e8f0; --border2:#cbd5e1;
+  --text:#111827; --text2:#4b5563; --text3:#9ca3af;
+  --accent:#2563eb; --accent-bg:#dbeafe;
+  --danger:#ef4444; --danger-bg:#fee2e2;
+  --success:#16a34a; --success-bg:#dcfce7;
+  --shadow:0 4px 8px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.05);
+  --shadow-lg:0 12px 30px rgba(0,0,0,.12),0 4px 10px rgba(0,0,0,.06);
+  --radius:12px; --radius-sm:8px;
+  --btn:44px; --btn-sm:36px;
+  --ctrl-gap:8px; --ctrl-pad:12px;
+  --font:'Noto Sans JP',sans-serif;
 }
-
-/* =====================================================
-   Reset
-   ===================================================== */
+/* =====================================================  Reset  */
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{
   width:100%;height:100%;overflow:hidden;
@@ -48,20 +41,15 @@ html,body{
 button{
   cursor:pointer;border:none;background:none;font-family:inherit;
   -webkit-tap-highlight-color:transparent;
-  -webkit-touch-callout:none;
-  user-select:none;-webkit-user-select:none;
+  -webkit-touch-callout:none;user-select:none;-webkit-user-select:none;
 }
-input,select{font-family:inherit}
+input,select,textarea{font-family:inherit}
 
-/* =====================================================
-   Screens
-   ===================================================== */
+/* =====================================================  Screens  */
 .screen{position:fixed;inset:0;display:none;flex-direction:column;overflow:hidden}
 .screen.active{display:flex}
 
-/* =====================================================
-   Loading
-   ===================================================== */
+/* =====================================================  Loading overlay  */
 #loading-overlay{
   position:fixed;inset:0;z-index:9000;
   background:rgba(255,255,255,.93);backdrop-filter:blur(6px);
@@ -75,16 +63,115 @@ input,select{font-family:inherit}
   border-radius:50%;animation:spin .75s linear infinite;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
-#loading-message{font-size:14px;font-weight:500;color:var(--text2);letter-spacing:.01em}
-.loading-bar-wrap{width:200px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-#loading-bar{height:100%;width:0%;background:var(--accent);border-radius:2px;transition:width .2s ease}
+#loading-message{font-size:14px;font-weight:500;color:var(--text2)}
+.loading-bar-wrap{width:220px;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+#loading-bar{height:100%;width:0%;background:var(--accent);border-radius:3px;transition:width .15s ease}
 #loading-percent{font-size:12px;color:var(--text3);font-weight:500}
 
-/* =====================================================
-   File List Screen
-   ===================================================== */
-#screen-filelist{background:var(--bg)}
+/* =====================================================  Confirm dialog  */
+#confirm-overlay{
+  position:fixed;inset:0;z-index:8500;
+  background:rgba(0,0,0,.45);backdrop-filter:blur(2px);
+  display:flex;align-items:center;justify-content:center;padding:24px;
+}
+#confirm-overlay.hidden{display:none}
+.confirm-box{
+  background:var(--bg);border-radius:16px;
+  width:100%;max-width:340px;
+  box-shadow:var(--shadow-lg);overflow:hidden;
+}
+.confirm-body{padding:24px 22px 10px;display:flex;flex-direction:column;gap:9px}
+.confirm-title{font-size:16px;font-weight:700}
+.confirm-msg{font-size:14px;color:var(--text2);line-height:1.6}
+.confirm-fname{
+  font-size:13px;font-weight:600;background:var(--surface);
+  padding:8px 12px;border-radius:8px;word-break:break-all;
+  border:1px solid var(--border);color:var(--text);
+}
+.confirm-actions{display:flex;gap:8px;padding:16px 22px 22px;justify-content:flex-end}
+.btn-cancel{
+  padding:9px 18px;border-radius:var(--radius-sm);
+  background:var(--surface);color:var(--text2);
+  font-size:14px;font-weight:500;border:1px solid var(--border);
+  transition:background .14s;
+}
+.btn-cancel:hover{background:var(--surface2)}
+.btn-danger{
+  padding:9px 18px;border-radius:var(--radius-sm);
+  background:var(--danger);color:#fff;
+  font-size:14px;font-weight:600;transition:opacity .14s;
+}
+.btn-danger:hover{opacity:.88}
 
+/* =====================================================  Settings modal  */
+#modal-settings .modal-box{max-width:540px}
+.settings-section{display:flex;flex-direction:column;gap:8px}
+.settings-label{font-size:13px;font-weight:600;color:var(--text2)}
+.settings-input{
+  padding:10px 13px;border:1px solid var(--border);border-radius:var(--radius-sm);
+  font-size:14px;color:var(--text);background:var(--surface);outline:none;
+  transition:border-color .14s,background .14s;width:100%;
+}
+.settings-input:focus{border-color:var(--accent);background:var(--bg)}
+.settings-hint{
+  font-size:12px;color:var(--text3);line-height:1.7;
+  background:var(--surface);padding:12px 14px;
+  border-radius:var(--radius-sm);border:1px solid var(--border);
+}
+.settings-hint a{color:var(--accent);text-decoration:none}
+.settings-hint a:hover{text-decoration:underline}
+.settings-hint ol{padding-left:1.3em;display:flex;flex-direction:column;gap:3px}
+.settings-divider{height:1px;background:var(--border);margin:4px 0}
+.signout-btn{
+  display:flex;align-items:center;gap:8px;
+  padding:9px 14px;border-radius:var(--radius-sm);
+  background:var(--danger-bg);color:var(--danger);
+  font-size:13px;font-weight:600;
+  border:1px solid #fca5a5;width:100%;
+  transition:opacity .14s;
+}
+.signout-btn:hover{opacity:.8}
+
+/* =====================================================  Login screen  */
+#screen-login{
+  background:linear-gradient(145deg,#eff6ff 0%,#ffffff 60%,#f0fdf4 100%);
+  align-items:center;justify-content:center;
+}
+.login-card{
+  display:flex;flex-direction:column;align-items:center;gap:20px;
+  padding:44px 36px;
+  background:var(--bg);border-radius:22px;
+  box-shadow:var(--shadow-lg);
+  width:100%;max-width:360px;margin:20px;
+}
+.login-icon{width:80px;height:80px;border-radius:20px;object-fit:cover}
+.login-title{font-size:24px;font-weight:700;letter-spacing:-.03em;color:var(--text)}
+.login-desc{font-size:14px;color:var(--text3);text-align:center;line-height:1.6}
+.btn-google{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  width:100%;padding:12px 20px;
+  border-radius:var(--radius-sm);
+  background:#fff;color:var(--text);
+  font-size:15px;font-weight:600;
+  border:1.5px solid var(--border);
+  box-shadow:var(--shadow);
+  transition:box-shadow .14s,border-color .14s;
+}
+.btn-google:hover{box-shadow:var(--shadow-lg);border-color:var(--border2)}
+.btn-google svg{flex-shrink:0}
+.btn-setup{
+  font-size:13px;color:var(--accent);background:none;border:none;
+  text-decoration:underline;cursor:pointer;
+}
+.login-error{
+  font-size:13px;color:var(--danger);
+  background:var(--danger-bg);padding:10px 14px;border-radius:8px;
+  width:100%;text-align:center;
+}
+.login-error.hidden{display:none}
+
+/* =====================================================  File list screen  */
+#screen-filelist{background:var(--bg)}
 .fl-header{
   display:flex;align-items:center;justify-content:space-between;
   padding:14px 18px;border-bottom:1px solid var(--border);
@@ -92,14 +179,14 @@ input,select{font-family:inherit}
 }
 .fl-title{
   display:flex;align-items:center;gap:9px;
-  font-size:19px;font-weight:700;color:var(--text);
+  font-size:18px;font-weight:700;color:var(--text);
   letter-spacing:-.02em;white-space:nowrap;
 }
-.fl-header-actions{display:flex;gap:7px;flex-shrink:0}
-
+.fl-title img{width:26px;height:26px;border-radius:7px;object-fit:cover;flex-shrink:0}
+.fl-header-actions{display:flex;gap:6px;flex-shrink:0}
 .btn-icon{
   display:flex;align-items:center;gap:6px;
-  padding:7px 13px;border-radius:var(--radius-sm);
+  padding:7px 12px;border-radius:var(--radius-sm);
   background:var(--surface);color:var(--text2);
   font-size:13px;font-weight:500;
   border:1px solid var(--border);
@@ -107,6 +194,14 @@ input,select{font-family:inherit}
 }
 .btn-icon:hover{background:var(--surface2);color:var(--text)}
 .btn-icon svg{flex-shrink:0}
+.btn-icon-round{
+  width:34px;height:34px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--surface);color:var(--text3);
+  border:1px solid var(--border);
+  transition:background .14s,color .14s;flex-shrink:0;
+}
+.btn-icon-round:hover{background:var(--surface2);color:var(--text)}
 
 .fl-controls{
   display:flex;gap:8px;padding:10px 16px;
@@ -146,74 +241,70 @@ input,select{font-family:inherit}
 .fl-tag-filter-bar:empty{padding:0;border-bottom:none}
 .fl-tag-filter-bar::-webkit-scrollbar{display:none}
 .tag-filter-chip{
-  display:inline-flex;align-items:center;gap:5px;
+  display:inline-flex;align-items:center;
   padding:4px 11px;border-radius:20px;border:1.5px solid;
   font-size:12px;font-weight:500;white-space:nowrap;
-  cursor:pointer;flex-shrink:0;transition:background .14s,color .14s;
-  background:transparent;
+  cursor:pointer;flex-shrink:0;
+  transition:background .14s,color .14s;background:transparent;
 }
 
-.fl-file-grid{
-  flex:1;overflow-y:auto;padding:12px 14px;
-  display:grid;gap:10px;align-content:start;
+/* 1-column file list */
+.fl-file-list{
+  flex:1;overflow-y:auto;padding:10px 14px;
+  display:flex;flex-direction:column;gap:6px;
   -webkit-overflow-scrolling:touch;
 }
-@media (orientation:portrait),(max-width:540px){.fl-file-grid{grid-template-columns:1fr}}
-@media (orientation:landscape) and (min-width:541px){.fl-file-grid{grid-template-columns:repeat(2,1fr)}}
-@media (orientation:landscape) and (min-width:900px){.fl-file-grid{grid-template-columns:repeat(3,1fr)}}
-@media (orientation:landscape) and (min-width:1200px){.fl-file-grid{grid-template-columns:repeat(4,1fr)}}
-@media (min-width:540px) and (orientation:portrait){.fl-file-grid{grid-template-columns:repeat(2,1fr)}}
-
 .fl-empty{
   flex:1;display:flex;flex-direction:column;
   align-items:center;justify-content:center;
   gap:12px;color:var(--text3);padding:40px 20px;
 }
 .fl-empty p{font-size:15px;font-weight:500}
-.fl-empty-sub{font-size:13px!important;font-weight:400!important;color:var(--text3)}
+.fl-empty-sub{font-size:13px!important;font-weight:400!important}
 
-.file-card{
+/* File row (no thumbnail) */
+.file-row{
   background:var(--bg);border:1px solid var(--border);
-  border-radius:var(--radius);padding:13px 14px;
-  cursor:pointer;transition:box-shadow .14s,border-color .14s;
-  display:flex;flex-direction:column;gap:10px;
+  border-radius:var(--radius);padding:11px 14px;
+  cursor:pointer;
+  transition:box-shadow .14s,border-color .14s,background .14s;
+  display:flex;align-items:center;gap:10px;
   -webkit-touch-callout:none;user-select:none;-webkit-user-select:none;
 }
-.file-card:hover{box-shadow:var(--shadow);border-color:var(--border2)}
-.file-card:active{background:var(--surface)}
-.file-card-top{display:flex;align-items:flex-start;gap:11px}
-.file-thumb{
-  width:62px;height:40px;border-radius:6px;
-  background:#1e2330;display:flex;align-items:center;justify-content:center;
-  color:#4b5563;flex-shrink:0;overflow:hidden;
+.file-row:hover{box-shadow:var(--shadow);border-color:var(--border2)}
+.file-row:active{background:var(--surface)}
+.file-row-icon{
+  width:36px;height:36px;border-radius:8px;
+  background:var(--accent-bg);
+  display:flex;align-items:center;justify-content:center;
+  color:var(--accent);flex-shrink:0;
 }
-.file-info{flex:1;min-width:0}
-.file-name{
+.file-row-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.file-row-name{
   font-size:14px;font-weight:600;color:var(--text);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35;
 }
-.file-name-input{
-  font-size:14px;font-weight:600;border:1.5px solid var(--accent);
-  border-radius:5px;padding:2px 7px;outline:none;
+.file-row-name-input{
+  font-size:14px;font-weight:600;
+  border:1.5px solid var(--accent);border-radius:5px;
+  padding:2px 7px;outline:none;
   width:100%;color:var(--text);background:var(--bg);
 }
-.file-meta{font-size:11px;color:var(--text3);margin-top:2px}
-.file-actions{display:flex;gap:3px;flex-shrink:0}
+.file-row-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.file-meta-text{font-size:11px;color:var(--text3)}
+.file-tag-chip{
+  padding:1px 7px;border-radius:8px;
+  font-size:11px;font-weight:500;color:#fff;white-space:nowrap;
+}
+.file-row-actions{display:flex;gap:2px;flex-shrink:0}
 .file-action-btn{
-  width:29px;height:29px;display:flex;align-items:center;justify-content:center;
+  width:30px;height:30px;display:flex;align-items:center;justify-content:center;
   border-radius:7px;color:var(--text3);transition:color .14s,background .14s;
 }
 .file-action-btn:hover{color:var(--text);background:var(--surface)}
 .file-action-btn.danger:hover{color:var(--danger);background:var(--danger-bg)}
-.file-tags{display:flex;flex-wrap:wrap;gap:4px}
-.file-tag-chip{
-  padding:2px 9px;border-radius:10px;
-  font-size:11px;font-weight:500;color:#fff;white-space:nowrap;
-}
 
-/* =====================================================
-   Modals
-   ===================================================== */
+/* =====================================================  Modals  */
 .modal-overlay{
   position:fixed;inset:0;z-index:800;
   background:rgba(0,0,0,.45);
@@ -223,7 +314,7 @@ input,select{font-family:inherit}
 .modal-overlay.hidden{display:none}
 .modal-box{
   background:var(--bg);border-radius:16px;
-  width:100%;max-width:480px;max-height:80vh;
+  width:100%;max-width:480px;max-height:82vh;
   display:flex;flex-direction:column;
   box-shadow:var(--shadow-lg);overflow:hidden;
 }
@@ -243,6 +334,7 @@ input,select{font-family:inherit}
   -webkit-overflow-scrolling:touch;
 }
 
+/* Tag editor */
 #tag-editor-list{display:flex;flex-direction:column;gap:7px}
 .tag-editor-item{
   display:flex;align-items:center;gap:8px;
@@ -277,7 +369,6 @@ input,select{font-family:inherit}
   transition:opacity .14s;
 }
 .tag-del-btn:hover{opacity:.8}
-
 .tag-add-form{
   display:flex;gap:8px;align-items:center;
   padding-top:4px;border-top:1px solid var(--border);flex-shrink:0;
@@ -301,7 +392,6 @@ input,select{font-family:inherit}
   font-size:13px;font-weight:600;white-space:nowrap;transition:opacity .14s;
 }
 .btn-primary:hover{opacity:.88}
-
 .file-tag-checkbox-item{
   display:flex;align-items:center;gap:10px;
   padding:10px 4px;border-bottom:1px solid var(--border);cursor:pointer;
@@ -310,15 +400,10 @@ input,select{font-family:inherit}
 .file-tag-checkbox-item input[type="checkbox"]{
   width:17px;height:17px;cursor:pointer;accent-color:var(--accent);flex-shrink:0;
 }
-.file-tag-checkbox-label{
-  display:flex;align-items:center;gap:8px;
-  font-size:14px;font-weight:500;cursor:pointer;
-}
+.file-tag-checkbox-label{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:500;cursor:pointer}
 .tag-dot-swatch{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 
-/* =====================================================
-   Player Screen
-   ===================================================== */
+/* =====================================================  Player screen  */
 #screen-player{background:#000}
 .player-wrap{
   position:relative;width:100%;height:100%;
@@ -335,37 +420,28 @@ input,select{font-family:inherit}
 .player-controls{position:absolute;inset:0;pointer-events:none}
 .player-controls > *{pointer-events:auto}
 
-/* Circular buttons */
 .ctrl-btn{
   width:var(--btn);height:var(--btn);border-radius:50%;
   border:2px solid rgba(255,255,255,.82);
   background:rgba(0,0,0,.18);color:#fff;
   display:flex;align-items:center;justify-content:center;
-  flex-shrink:0;position:relative;
-  -webkit-touch-callout:none;
-  user-select:none;-webkit-user-select:none;
+  flex-shrink:0;
+  -webkit-touch-callout:none;user-select:none;-webkit-user-select:none;
   -webkit-tap-highlight-color:transparent;
   transition:background .12s,border-color .12s;
 }
 .ctrl-btn:active{background:rgba(255,255,255,.22)}
 .ctrl-btn.active{background:rgba(255,255,255,.25);border-color:#fff}
 .ctrl-btn-sm{width:var(--btn-sm);height:var(--btn-sm)}
-
 .skip-btn{flex-direction:column;gap:0}
 .skip-btn svg{margin-top:2px}
-.skip-label{
-  font-size:10px;font-weight:800;color:#fff;line-height:1;
-  margin-top:1px;text-shadow:0 1px 2px rgba(0,0,0,.6);
-}
+.skip-label{font-size:10px;font-weight:800;color:#fff;line-height:1;margin-top:1px;text-shadow:0 1px 2px rgba(0,0,0,.6)}
 
-/* Top bar */
 .ctrl-top-bar{
   position:absolute;
   top:var(--ctrl-pad);left:var(--ctrl-pad);right:var(--ctrl-pad);
   display:flex;align-items:center;gap:10px;
 }
-
-/* Seekbar */
 .seekbar-wrap{flex:1;display:flex;flex-direction:column;gap:5px;min-width:0}
 .seekbar-track{
   position:relative;height:6px;
@@ -375,15 +451,14 @@ input,select{font-family:inherit}
 .seekbar-progress{
   position:absolute;top:0;left:0;height:100%;
   background:rgba(255,255,255,.9);border-radius:3px;
-  pointer-events:none;width:0%;transition:width .05s linear;
+  pointer-events:none;width:0%;
 }
 .seekbar-loop-range{
   position:absolute;top:0;height:100%;
   background:rgba(59,130,246,.55);pointer-events:none;display:none;
 }
 .seekbar-loop-range.visible{display:block}
-.seekbar-loop-start,
-.seekbar-loop-end{
+.seekbar-loop-start,.seekbar-loop-end{
   position:absolute;top:-3px;bottom:-3px;width:3px;
   pointer-events:none;border-radius:2px;
 }
@@ -406,14 +481,12 @@ input,select{font-family:inherit}
   color:rgba(255,255,255,.85);text-shadow:0 1px 3px rgba(0,0,0,.55);
 }
 
-/* Left controls */
 .ctrl-left{
   position:absolute;
   top:calc(var(--ctrl-pad) + var(--btn) + 10px);
   left:var(--ctrl-pad);
   display:flex;flex-direction:column;gap:var(--ctrl-gap);
 }
-/* Right controls */
 .ctrl-right{
   position:absolute;
   top:calc(var(--ctrl-pad) + var(--btn) + 10px);
@@ -427,19 +500,16 @@ input,select{font-family:inherit}
   font-size:12px;font-weight:800;color:#fff;
   letter-spacing:.01em;text-shadow:0 1px 4px rgba(0,0,0,.6);white-space:nowrap;
 }
-
 .ui-show-btn{position:absolute;top:var(--ctrl-pad);right:var(--ctrl-pad);z-index:10}
 .ui-show-btn.hidden{display:none}
 
-/* =====================================================
-   Responsive
-   ===================================================== */
-@media (max-height:420px){
+/* =====================================================  Responsive  */
+@media(max-height:420px){
   :root{--btn:36px;--btn-sm:30px;--ctrl-gap:6px;--ctrl-pad:8px}
   .skip-label{font-size:9px}
   .seekbar-time{font-size:10px}
 }
-@media (max-width:360px){
+@media(max-width:360px){
   .fl-title{font-size:16px}
   .btn-icon span{display:none}
   .btn-icon{padding:7px 10px}
@@ -448,7 +518,7 @@ input,select{font-family:inherit}
 </head>
 <body>
 
-<!-- Loading Overlay -->
+<!-- ===== Loading overlay ===== -->
 <div id="loading-overlay" class="hidden">
   <div class="loading-content">
     <div class="loading-spinner"></div>
@@ -458,37 +528,111 @@ input,select{font-family:inherit}
   </div>
 </div>
 
+<!-- ===== Confirm delete dialog ===== -->
+<div id="confirm-overlay" class="hidden">
+  <div class="confirm-box">
+    <div class="confirm-body">
+      <div class="confirm-title">ファイルを削除</div>
+      <div class="confirm-msg">このファイルをGoogle Driveから削除しますか？<br>この操作は取り消せません。</div>
+      <div class="confirm-fname" id="confirm-fname"></div>
+    </div>
+    <div class="confirm-actions">
+      <button class="btn-cancel" id="btn-confirm-cancel">キャンセル</button>
+      <button class="btn-danger" id="btn-confirm-ok">削除する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Settings modal ===== -->
+<div id="modal-settings" class="modal-overlay hidden" role="dialog" aria-modal="true">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Google Cloud 設定</h2>
+      <button class="btn-close" id="btn-close-settings" aria-label="閉じる">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="settings-section">
+        <label class="settings-label" for="input-client-id">OAuth 2.0 クライアントID</label>
+        <input type="text" id="input-client-id" class="settings-input" placeholder="xxxxx.apps.googleusercontent.com" autocomplete="off" spellcheck="false">
+        <button class="btn-primary" id="btn-save-client-id" style="align-self:flex-start">保存</button>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="settings-hint">
+        <strong>設定手順</strong>
+        <ol>
+          <li><a href="https://console.cloud.google.com/" target="_blank" rel="noopener">Google Cloud Console</a> を開く</li>
+          <li>プロジェクトを作成（または選択）</li>
+          <li>「APIとサービス」→「ライブラリ」→ <strong>Google Drive API</strong> を有効化</li>
+          <li>「APIとサービス」→「認証情報」→「OAuth 2.0 クライアントID を作成」</li>
+          <li>アプリ種別:「<strong>ウェブアプリケーション</strong>」を選択</li>
+          <li>「承認済みのJavaScript生成元」に あなたの GitHub Pages URL を追加<br>例: <code>https://username.github.io</code></li>
+          <li>クライアントIDをコピーして上欄に貼り付け → 保存</li>
+        </ol>
+      </div>
+      <div class="settings-divider" id="signout-divider" style="display:none"></div>
+      <button class="signout-btn" id="btn-signout" style="display:none">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Googleアカウントからサインアウト
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="screen-login" class="screen active">
+  <div class="login-card">
+    <img src="icon-192.png" class="login-icon" alt="VideoPlayer" onerror="this.style.display='none'">
+    <div class="login-title">VideoPlayer</div>
+    <div class="login-desc">Google Drive の動画をストリーミング再生</div>
+    <div class="login-error hidden" id="login-error"></div>
+    <button class="btn-google" id="btn-google-login">
+      <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+        <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+        <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+      </svg>
+      Googleでログイン
+    </button>
+    <button class="btn-setup" id="btn-open-settings-login">Client IDを設定する</button>
+  </div>
+</div>
+
 <!-- ===== FILE LIST SCREEN ===== -->
-<div id="screen-filelist" class="screen active">
+<div id="screen-filelist" class="screen">
   <header class="fl-header">
     <h1 class="fl-title">
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+      <img src="icon-192.png" alt="" onerror="this.style.display='none'">
       VideoPlayer
     </h1>
     <div class="fl-header-actions">
       <button class="btn-icon" id="btn-add-file">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
         <span>追加</span>
       </button>
       <button class="btn-icon" id="btn-open-tag-editor">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-        <span>タグ編集</span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+        <span>タグ</span>
+      </button>
+      <button class="btn-icon-round" id="btn-open-settings-main" title="設定">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </div>
   </header>
-
   <div class="fl-controls">
     <div class="fl-search-wrap">
-      <span class="search-icon" aria-hidden="true">
+      <span class="search-icon">
         <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       </span>
       <input type="text" id="search-input" placeholder="名前・タグで検索..." autocomplete="off" spellcheck="false">
       <button class="search-clear hidden" id="btn-search-clear" aria-label="検索クリア">
-        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <div class="fl-sort-wrap">
-      <select id="sort-select" aria-label="並べ替え">
+      <select id="sort-select">
         <option value="added-desc">追加順↓</option>
         <option value="added-asc">追加順↑</option>
         <option value="name-asc">名前順↑</option>
@@ -496,13 +640,12 @@ input,select{font-family:inherit}
       </select>
     </div>
   </div>
-
   <div class="fl-tag-filter-bar" id="tag-filter-bar"></div>
-  <div class="fl-file-grid" id="file-grid" role="list"></div>
+  <div class="fl-file-list" id="file-list" role="list"></div>
   <div class="fl-empty" id="fl-empty" style="display:none">
     <svg xmlns="http://www.w3.org/2000/svg" width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
     <p>動画を追加してください</p>
-    <p class="fl-empty-sub">「追加」ボタンから動画ファイルを選択</p>
+    <p class="fl-empty-sub">「追加」からDriveにアップロード</p>
   </div>
   <input type="file" id="file-input" accept="video/*" multiple style="display:none">
 </div>
@@ -510,10 +653,8 @@ input,select{font-family:inherit}
 <!-- ===== PLAYER SCREEN ===== -->
 <div id="screen-player" class="screen">
   <div class="player-wrap" id="player-wrap">
-    <video id="video-el" playsinline preload="auto"></video>
-
+    <video id="video-el" playsinline preload="auto" crossorigin="use-credentials"></video>
     <div class="player-controls" id="player-controls">
-      <!-- TOP BAR -->
       <div class="ctrl-top-bar">
         <button class="ctrl-btn" id="btn-back" aria-label="一覧に戻る">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -535,8 +676,6 @@ input,select{font-family:inherit}
           <svg id="icon-pause" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1" style="display:none"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
         </button>
       </div>
-
-      <!-- LEFT CONTROLS -->
       <div class="ctrl-left">
         <div class="ctrl-row">
           <button class="ctrl-btn skip-btn" id="btn-back3" aria-label="-3秒">
@@ -564,16 +703,14 @@ input,select{font-family:inherit}
           </button>
         </div>
       </div>
-
-      <!-- RIGHT CONTROLS -->
       <div class="ctrl-right">
         <div class="ctrl-row ctrl-row-speed">
           <button class="ctrl-btn ctrl-btn-sm" id="btn-speed-down" aria-label="速度を下げる">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
           <div class="speed-display" id="speed-display">1.00x</div>
           <button class="ctrl-btn ctrl-btn-sm" id="btn-speed-up" aria-label="速度を上げる">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
         </div>
         <div class="ctrl-row">
@@ -604,8 +741,7 @@ input,select{font-family:inherit}
           </button>
         </div>
       </div>
-    </div><!-- /player-controls -->
-
+    </div>
     <button class="ctrl-btn ui-show-btn hidden" id="btn-ui-show" aria-label="UI表示">
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
     </button>
@@ -618,14 +754,14 @@ input,select{font-family:inherit}
     <div class="modal-header">
       <h2>タグ編集</h2>
       <button class="btn-close" id="btn-close-tag-editor" aria-label="閉じる">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <div class="modal-body">
       <div id="tag-editor-list"></div>
       <div class="tag-add-form">
         <input type="text" id="new-tag-name" placeholder="新しいタグ名..." maxlength="30" autocomplete="off">
-        <input type="color" id="new-tag-color" value="#3b82f6" aria-label="タグの色">
+        <input type="color" id="new-tag-color" value="#3b82f6">
         <button class="btn-primary" id="btn-add-tag">追加</button>
       </div>
     </div>
@@ -638,7 +774,7 @@ input,select{font-family:inherit}
     <div class="modal-header">
       <h2>タグを編集</h2>
       <button class="btn-close" id="btn-close-file-tags" aria-label="閉じる">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <div class="modal-body" id="file-tags-body"></div>
@@ -647,278 +783,468 @@ input,select{font-family:inherit}
 
 <script>
 /* =====================================================
-   utils.js
+   UTILS
    ===================================================== */
-function formatTime(sec){
-  if(!isFinite(sec)||sec<0)sec=0;
-  const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60),s=Math.floor(sec%60);
-  if(h>0)return`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
-  return`${m}:${String(s).padStart(2,'0')}`;
+function formatTime(s){
+  if(!isFinite(s)||s<0)s=0;
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=Math.floor(s%60);
+  if(h>0)return`${h}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+  return`${m}:${String(ss).padStart(2,'0')}`;
 }
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
-function clamp(v,min,max){return Math.max(min,Math.min(max,v))}
-function humanSize(bytes){
-  if(bytes<1024)return bytes+' B';
-  if(bytes<1048576)return(bytes/1024).toFixed(1)+' KB';
-  return(bytes/1048576).toFixed(1)+' MB';
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function humanSize(b){
+  if(b<1024)return b+' B';
+  if(b<1048576)return(b/1024).toFixed(1)+' KB';
+  return(b/1048576).toFixed(1)+' MB';
 }
+function stripExt(n){return n.replace(/\.[^.]+$/,'')}
+
 function showLoading(msg='読み込み中...'){
   document.getElementById('loading-message').textContent=msg;
   document.getElementById('loading-bar').style.width='0%';
   document.getElementById('loading-percent').textContent='0%';
   document.getElementById('loading-overlay').classList.remove('hidden');
 }
-function updateLoadingProgress(pct){
+function updateProgress(pct){
   const p=clamp(Math.round(pct),0,100);
   document.getElementById('loading-bar').style.width=p+'%';
   document.getElementById('loading-percent').textContent=p+'%';
 }
 function hideLoading(){document.getElementById('loading-overlay').classList.add('hidden')}
-function noLongPress(el){el.addEventListener('contextmenu',e=>e.preventDefault())}
-function initNoLongPress(){document.querySelectorAll('.ctrl-btn').forEach(noLongPress)}
 
 /* =====================================================
-   db.js
+   IndexedDB  (metadata only — no video blobs)
    ===================================================== */
-const DB_NAME='videoplayer-db',DB_VERSION=2;
+const DB_NAME='vp-meta-v1',DB_VER=1;
 let _db=null;
 function openDB(){
-  return new Promise((resolve,reject)=>{
-    if(_db){resolve(_db);return}
-    const req=indexedDB.open(DB_NAME,DB_VERSION);
-    req.onupgradeneeded=e=>{
+  return new Promise((res,rej)=>{
+    if(_db){res(_db);return}
+    const r=indexedDB.open(DB_NAME,DB_VER);
+    r.onupgradeneeded=e=>{
       const db=e.target.result;
-      if(!db.objectStoreNames.contains('blobs'))db.createObjectStore('blobs',{keyPath:'id'});
-      if(!db.objectStoreNames.contains('settings'))db.createObjectStore('settings',{keyPath:'key'});
+      if(!db.objectStoreNames.contains('kv'))db.createObjectStore('kv',{keyPath:'k'});
     };
-    req.onsuccess=e=>{_db=e.target.result;resolve(_db)};
-    req.onerror=e=>reject(e.target.error);
+    r.onsuccess=e=>{_db=e.target.result;res(_db)};
+    r.onerror=e=>rej(e.target.error);
   });
 }
-function dbSaveBlob(id,blob,onProgress){
-  return new Promise(async(resolve,reject)=>{
-    const db=await openDB();
-    let pct=0;
-    const tick=setInterval(()=>{pct=Math.min(pct+4,88);if(onProgress)onProgress(pct)},60);
-    const tx=db.transaction('blobs','readwrite');
-    const req=tx.objectStore('blobs').put({id,blob});
-    req.onsuccess=()=>{clearInterval(tick);if(onProgress)onProgress(100);resolve()};
-    req.onerror=e=>{clearInterval(tick);reject(e.target.error)};
-  });
-}
-function dbGetBlob(id){
-  return new Promise(async(resolve,reject)=>{
-    const db=await openDB();
-    const tx=db.transaction('blobs','readonly');
-    const req=tx.objectStore('blobs').get(id);
-    req.onsuccess=e=>resolve(e.target.result?e.target.result.blob:null);
-    req.onerror=e=>reject(e.target.error);
-  });
-}
-function dbDeleteBlob(id){
-  return new Promise(async(resolve,reject)=>{
-    const db=await openDB();
-    const tx=db.transaction('blobs','readwrite');
-    const req=tx.objectStore('blobs').delete(id);
-    req.onsuccess=()=>resolve();
-    req.onerror=e=>reject(e.target.error);
-  });
-}
-async function dbGet(key){
+async function dbGet(k){
   const db=await openDB();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction('settings','readonly');
-    const req=tx.objectStore('settings').get(key);
-    req.onsuccess=e=>resolve(e.target.result?e.target.result.value:undefined);
-    req.onerror=e=>reject(e.target.error);
+  return new Promise((res,rej)=>{
+    const r=db.transaction('kv','readonly').objectStore('kv').get(k);
+    r.onsuccess=e=>res(e.target.result?e.target.result.v:undefined);
+    r.onerror=e=>rej(e.target.error);
   });
 }
-async function dbSet(key,value){
+async function dbSet(k,v){
   const db=await openDB();
-  return new Promise((resolve,reject)=>{
-    const tx=db.transaction('settings','readwrite');
-    const req=tx.objectStore('settings').put({key,value});
-    req.onsuccess=()=>resolve();
-    req.onerror=e=>reject(e.target.error);
+  return new Promise((res,rej)=>{
+    const r=db.transaction('kv','readwrite').objectStore('kv').put({k,v});
+    r.onsuccess=()=>res();r.onerror=e=>rej(e.target.error);
+  });
+}
+async function dbDel(k){
+  const db=await openDB();
+  return new Promise((res,rej)=>{
+    const r=db.transaction('kv','readwrite').objectStore('kv').delete(k);
+    r.onsuccess=()=>res();r.onerror=e=>rej(e.target.error);
   });
 }
 
 /* =====================================================
-   store.js
+   AUTH  — Google Identity Services
    ===================================================== */
-const Store=(()=>{
-  let state={files:[],tags:[],playerData:{}};
-  async function load(){
-    const files=await dbGet('files');
-    const tags=await dbGet('tags');
-    const playerData=await dbGet('playerData');
-    if(files)state.files=files;
-    if(tags)state.tags=tags;
-    if(playerData)state.playerData=playerData;
+const Auth=(()=>{
+  let _tok=null,_exp=0,_client=null,_pending=[];
+
+  function isValid(){return _tok&&Date.now()<_exp-60000}
+  function getToken(){return _tok}
+
+  async function _sendSW(token){
+    try{
+      if('serviceWorker' in navigator){
+        const reg=await navigator.serviceWorker.ready;
+        reg.active?.postMessage({type:'SET_TOKEN',token:token||null});
+      }
+    }catch(e){}
   }
-  async function saveFiles(){await dbSet('files',state.files)}
-  async function saveTags(){await dbSet('tags',state.tags)}
-  async function savePlayerData(){await dbSet('playerData',state.playerData)}
-  function getFiles(){return state.files}
-  async function addFile(file,blobSaveCallback){
-    const id=genId();
-    const meta={id,name:file.name,addedAt:Date.now(),size:file.size,tagIds:[]};
-    state.files.push(meta);
-    await saveFiles();
-    if(blobSaveCallback)await blobSaveCallback(id,file);
-    return id;
+
+  function _store(token,expiresIn){
+    _tok=token;
+    _exp=Date.now()+(parseInt(expiresIn)||3600)*1000;
+    sessionStorage.setItem('_t',token);
+    sessionStorage.setItem('_e',_exp.toString());
+    _sendSW(token);
+    _pending.forEach(r=>r.ok(token));
+    _pending=[];
   }
-  async function deleteFile(id){
-    state.files=state.files.filter(f=>f.id!==id);
-    delete state.playerData[id];
-    await saveFiles();await savePlayerData();await dbDeleteBlob(id);
+
+  function _fail(err){
+    _pending.forEach(r=>r.ng(err));
+    _pending=[];
   }
-  async function renameFile(id,newName){
-    const f=state.files.find(f=>f.id===id);
-    if(f){f.name=newName;await saveFiles()}
+
+  function restoreSession(){
+    const t=sessionStorage.getItem('_t'),e=parseInt(sessionStorage.getItem('_e')||'0');
+    if(t&&Date.now()<e-60000){_tok=t;_exp=e;_sendSW(t);return true}
+    return false;
   }
-  async function setFileTags(id,tagIds){
-    const f=state.files.find(f=>f.id===id);
-    if(f){f.tagIds=tagIds;await saveFiles()}
+
+  function clear(){
+    _tok=null;_exp=0;
+    sessionStorage.removeItem('_t');sessionStorage.removeItem('_e');
+    _sendSW(null);
   }
-  function getTags(){return state.tags}
-  async function addTag(name,color){
-    const tag={id:genId(),name,color,order:state.tags.length};
-    state.tags.push(tag);await saveTags();return tag;
-  }
-  async function updateTag(id,changes){
-    const t=state.tags.find(t=>t.id===id);
-    if(t){Object.assign(t,changes);await saveTags()}
-  }
-  async function deleteTag(id){
-    state.tags=state.tags.filter(t=>t.id!==id);
-    state.files.forEach(f=>{f.tagIds=f.tagIds.filter(tid=>tid!==id)});
-    await saveTags();await saveFiles();
-  }
-  async function reorderTags(newOrder){
-    newOrder.forEach((id,idx)=>{const t=state.tags.find(t=>t.id===id);if(t)t.order=idx});
-    state.tags.sort((a,b)=>a.order-b.order);await saveTags();
-  }
-  function getPlayerData(fileId){
-    if(!state.playerData[fileId])state.playerData[fileId]={markers:[],loop:null};
-    return state.playerData[fileId];
-  }
-  async function addMarker(fileId,seconds){
-    const pd=getPlayerData(fileId);
-    if(!pd.markers.includes(seconds)){
-      pd.markers.push(seconds);pd.markers.sort((a,b)=>a-b);await savePlayerData();
+
+  async function init(clientId){
+    if(!window.google?.accounts?.oauth2){
+      await new Promise(res=>{
+        const s=document.createElement('script');
+        s.src='https://accounts.google.com/gsi/client';
+        s.async=true;s.onload=res;
+        document.head.appendChild(s);
+      });
     }
+    _client=google.accounts.oauth2.initTokenClient({
+      client_id:clientId,
+      scope:'https://www.googleapis.com/auth/drive.file',
+      callback:resp=>{
+        if(resp.error){_fail(new Error(resp.error));return}
+        _store(resp.access_token,resp.expires_in);
+      }
+    });
   }
-  async function deleteNearestMarkerBefore(fileId,currentTime){
-    const pd=getPlayerData(fileId);
-    const before=pd.markers.filter(m=>m<=currentTime);
-    if(!before.length)return;
-    const nearest=before[before.length-1];
-    pd.markers=pd.markers.filter(m=>m!==nearest);
-    await savePlayerData();return nearest;
+
+  function login(){
+    return new Promise((ok,ng)=>{
+      _pending.push({ok,ng});
+      _client.requestAccessToken({prompt:'select_account'});
+    });
   }
-  async function setLoopStart(fileId,seconds){
-    const pd=getPlayerData(fileId);
-    if(!pd.loop)pd.loop={start:null,end:null};
-    pd.loop.start=seconds;pd.loop.end=null;await savePlayerData();
+
+  function silentRefresh(){
+    return new Promise((ok,ng)=>{
+      _pending.push({ok,ng});
+      _client.requestAccessToken({prompt:''});
+    });
   }
-  async function setLoopEnd(fileId,seconds){
-    const pd=getPlayerData(fileId);
-    if(!pd.loop)pd.loop={start:null,end:null};
-    pd.loop.end=seconds;await savePlayerData();
+
+  async function getValid(){
+    if(isValid())return _tok;
+    return silentRefresh();
   }
-  async function deleteLoop(fileId){
-    const pd=getPlayerData(fileId);pd.loop=null;await savePlayerData();
+
+  function signOut(){
+    if(_tok)google.accounts.oauth2.revoke(_tok,()=>{});
+    clear();
   }
-  return{
-    load,getFiles,addFile,deleteFile,renameFile,setFileTags,
-    getTags,addTag,updateTag,deleteTag,reorderTags,
-    getPlayerData,addMarker,deleteNearestMarkerBefore,
-    setLoopStart,setLoopEnd,deleteLoop
-  };
+
+  async function ensureSW(){
+    if(!_tok)return;
+    try{
+      const reg=await navigator.serviceWorker.ready;
+      reg.active?.postMessage({type:'SET_TOKEN',token:_tok});
+    }catch(e){}
+  }
+
+  return{isValid,getToken,restoreSession,clear,init,login,silentRefresh,getValid,signOut,ensureSW};
 })();
 
 /* =====================================================
-   filelist.js
+   DRIVE API
+   ===================================================== */
+const Drive=(()=>{
+  let _folderId=null;
+
+  async function _req(path,opts={}){
+    const token=await Auth.getValid();
+    const url=path.startsWith('https')?path:`https://www.googleapis.com/drive/v3${path}`;
+    const headers={'Authorization':`Bearer ${token}`,...(opts.headers||{})};
+    if(opts.json!==undefined)headers['Content-Type']='application/json; charset=UTF-8';
+    const resp=await fetch(url,{
+      method:opts.method||'GET',
+      headers,
+      body:opts.json!==undefined?JSON.stringify(opts.json):(opts.body||undefined)
+    });
+    if(resp.status===204)return null;
+    if(!resp.ok){
+      const e=await resp.json().catch(()=>({}));
+      throw new Error(`Drive ${resp.status}: ${e?.error?.message||''}`);
+    }
+    return resp.json();
+  }
+
+  async function getFolder(){
+    if(_folderId)return _folderId;
+    const stored=await dbGet('folderId');
+    if(stored){_folderId=stored;return _folderId}
+
+    const q=encodeURIComponent(`name='VideoPlayer' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+    const list=await _req(`/files?q=${q}&fields=files(id)&spaces=drive`);
+    if(list.files.length){
+      _folderId=list.files[0].id;
+    }else{
+      const f=await _req('/files',{method:'POST',json:{name:'VideoPlayer',mimeType:'application/vnd.google-apps.folder'}});
+      _folderId=f.id;
+    }
+    await dbSet('folderId',_folderId);
+    return _folderId;
+  }
+
+  async function listFiles(){
+    const fid=await getFolder();
+    const q=encodeURIComponent(`'${fid}' in parents and trashed=false`);
+    const resp=await _req(`/files?q=${q}&fields=files(id,name,size,createdTime)&orderBy=createdTime+desc&pageSize=200&spaces=drive`);
+    return resp.files||[];
+  }
+
+  /* Resumable upload with real progress */
+  async function uploadFile(file,onProgress){
+    const fid=await getFolder();
+    const token=await Auth.getValid();
+
+    /* Step 1 — Initiate */
+    const init=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,size,createdTime',{
+      method:'POST',
+      headers:{
+        'Authorization':`Bearer ${token}`,
+        'Content-Type':'application/json; charset=UTF-8',
+        'X-Upload-Content-Type':file.type||'video/mp4',
+        'X-Upload-Content-Length':file.size.toString()
+      },
+      body:JSON.stringify({name:file.name,parents:[fid]})
+    });
+    if(!init.ok)throw new Error('アップロード開始に失敗しました');
+    const uploadUrl=init.headers.get('Location');
+
+    /* Step 2 — PUT with XHR for progress */
+    return new Promise((res,rej)=>{
+      const xhr=new XMLHttpRequest();
+      xhr.open('PUT',uploadUrl);
+      xhr.setRequestHeader('Content-Type',file.type||'video/mp4');
+      xhr.upload.onprogress=e=>{if(e.lengthComputable&&onProgress)onProgress(e.loaded/e.total*100)};
+      xhr.onload=()=>{
+        if(xhr.status>=200&&xhr.status<300)res(JSON.parse(xhr.responseText));
+        else rej(new Error(`アップロード失敗: ${xhr.status}`));
+      };
+      xhr.onerror=()=>rej(new Error('ネットワークエラー'));
+      xhr.send(file);
+    });
+  }
+
+  async function deleteFile(fileId){
+    await _req(`/files/${fileId}`,{method:'DELETE'});
+  }
+
+  function streamUrl(fileId){
+    return `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media&acknowledgeAbuse=true`;
+  }
+
+  function resetFolder(){_folderId=null;dbDel('folderId')}
+
+  return{getFolder,listFiles,uploadFile,deleteFile,streamUrl,resetFolder};
+})();
+
+/* =====================================================
+   STORE  — local metadata (no blobs)
+   ===================================================== */
+const Store=(()=>{
+  let S={files:[],tags:[],pd:{}};
+
+  async function load(){
+    const f=await dbGet('files'),t=await dbGet('tags'),p=await dbGet('pd');
+    if(f)S.files=f; if(t)S.tags=t; if(p)S.pd=p;
+  }
+  async function sf(){await dbSet('files',S.files)}
+  async function st(){await dbSet('tags',S.tags)}
+  async function sp(){await dbSet('pd',S.pd)}
+
+  function getFiles(){return S.files}
+  function getTags(){return S.tags}
+
+  /* Sync with Drive file list — add new, remove deleted */
+  async function syncWithDrive(driveFiles){
+    const ids=new Set(driveFiles.map(f=>f.id));
+    /* Add new */
+    for(const df of driveFiles){
+      if(!S.files.find(f=>f.id===df.id)){
+        S.files.push({id:df.id,name:stripExt(df.name),addedAt:new Date(df.createdTime).getTime(),size:parseInt(df.size||0),tagIds:[]});
+      }
+    }
+    /* Remove orphans */
+    S.files=S.files.filter(f=>ids.has(f.id));
+    /* Orphan pd */
+    Object.keys(S.pd).forEach(id=>{if(!ids.has(id))delete S.pd[id]});
+    await sf();await sp();
+  }
+
+  async function addFileMeta(driveFile){
+    if(S.files.find(f=>f.id===driveFile.id))return;
+    S.files.push({id:driveFile.id,name:stripExt(driveFile.name),addedAt:new Date(driveFile.createdTime).getTime(),size:parseInt(driveFile.size||0),tagIds:[]});
+    await sf();
+  }
+
+  async function removeFileMeta(id){
+    S.files=S.files.filter(f=>f.id!==id);
+    delete S.pd[id];
+    await sf();await sp();
+  }
+
+  async function renameFile(id,n){const f=S.files.find(f=>f.id===id);if(f){f.name=n;await sf()}}
+  async function setFileTags(id,tagIds){const f=S.files.find(f=>f.id===id);if(f){f.tagIds=tagIds;await sf()}}
+
+  async function addTag(name,color){const t={id:genId(),name,color,order:S.tags.length};S.tags.push(t);await st();return t}
+  async function updateTag(id,ch){const t=S.tags.find(t=>t.id===id);if(t){Object.assign(t,ch);await st()}}
+  async function deleteTag(id){S.tags=S.tags.filter(t=>t.id!==id);S.files.forEach(f=>{f.tagIds=f.tagIds.filter(tid=>tid!==id)});await st();await sf()}
+  async function reorderTags(order){order.forEach((id,i)=>{const t=S.tags.find(t=>t.id===id);if(t)t.order=i});S.tags.sort((a,b)=>a.order-b.order);await st()}
+
+  function getPD(id){if(!S.pd[id])S.pd[id]={markers:[],loop:null};return S.pd[id]}
+  async function addMarker(id,s){const pd=getPD(id);if(!pd.markers.includes(s)){pd.markers.push(s);pd.markers.sort((a,b)=>a-b);await sp()}}
+  async function delNearestMarker(id,ct){
+    const pd=getPD(id);const b=pd.markers.filter(m=>m<=ct);if(!b.length)return;
+    const n=b[b.length-1];pd.markers=pd.markers.filter(m=>m!==n);await sp();return n;
+  }
+  async function setLoopStart(id,s){const pd=getPD(id);if(!pd.loop)pd.loop={start:null,end:null};pd.loop.start=s;pd.loop.end=null;await sp()}
+  async function setLoopEnd(id,s){const pd=getPD(id);if(!pd.loop)pd.loop={start:null,end:null};pd.loop.end=s;await sp()}
+  async function delLoop(id){getPD(id).loop=null;await sp()}
+
+  return{load,getFiles,getTags,syncWithDrive,addFileMeta,removeFileMeta,renameFile,setFileTags,addTag,updateTag,deleteTag,reorderTags,getPD,addMarker,delNearestMarker,setLoopStart,setLoopEnd,delLoop};
+})();
+
+/* =====================================================
+   CONFIRM DIALOG
+   ===================================================== */
+const Confirm=(()=>{
+  const overlay=document.getElementById('confirm-overlay');
+  const fname=document.getElementById('confirm-fname');
+  const btnOk=document.getElementById('btn-confirm-ok');
+  const btnCancel=document.getElementById('btn-confirm-cancel');
+  let _resolve=null;
+  function show(name){
+    fname.textContent=name;
+    overlay.classList.remove('hidden');
+    return new Promise(r=>{_resolve=r});
+  }
+  const done=ok=>{overlay.classList.add('hidden');if(_resolve){_resolve(ok);_resolve=null}};
+  btnOk.addEventListener('click',()=>done(true));
+  btnCancel.addEventListener('click',()=>done(false));
+  overlay.addEventListener('click',e=>{if(e.target===overlay)done(false)});
+  return{show};
+})();
+
+/* =====================================================
+   SETTINGS MODAL
+   ===================================================== */
+const Settings=(()=>{
+  const modal=document.getElementById('modal-settings');
+  const inputCid=document.getElementById('input-client-id');
+  const btnSave=document.getElementById('btn-save-client-id');
+  const btnClose=document.getElementById('btn-close-settings');
+  const btnSignout=document.getElementById('btn-signout');
+  const signoutDiv=document.getElementById('signout-divider');
+
+  function getClientId(){return localStorage.getItem('_cid')||''}
+  function setClientId(id){localStorage.setItem('_cid',id)}
+
+  function open(showSignout=false){
+    inputCid.value=getClientId();
+    btnSignout.style.display=showSignout?'flex':'none';
+    signoutDiv.style.display=showSignout?'block':'none';
+    modal.classList.remove('hidden');
+  }
+  function close(){modal.classList.add('hidden')}
+
+  btnClose.addEventListener('click',close);
+  modal.addEventListener('click',e=>{if(e.target===modal)close()});
+
+  btnSave.addEventListener('click',()=>{
+    const v=inputCid.value.trim();
+    if(!v){alert('クライアントIDを入力してください');return}
+    setClientId(v);
+    close();
+    App.boot(); // re-init with new client ID
+  });
+
+  btnSignout.addEventListener('click',async()=>{
+    Auth.signOut();
+    close();
+    Drive.resetFolder();
+    App.showLogin();
+  });
+
+  document.getElementById('btn-open-settings-login').addEventListener('click',()=>open(false));
+  document.getElementById('btn-open-settings-main').addEventListener('click',()=>open(true));
+
+  return{getClientId,setClientId,open,close};
+})();
+
+/* =====================================================
+   FILE LIST
    ===================================================== */
 const FileList=(()=>{
-  let searchQuery='',sortMode='added-desc',activeTagFilter=null;
-  const grid=document.getElementById('file-grid');
-  const emptyState=document.getElementById('fl-empty');
-  const searchInput=document.getElementById('search-input');
-  const clearBtn=document.getElementById('btn-search-clear');
-  const sortSelect=document.getElementById('sort-select');
-  const tagFilterBar=document.getElementById('tag-filter-bar');
-  const fileInput=document.getElementById('file-input');
+  let _q='',_sort='added-desc',_tag=null;
+  const listEl=document.getElementById('file-list');
+  const empty=document.getElementById('fl-empty');
+  const si=document.getElementById('search-input');
+  const sc=document.getElementById('btn-search-clear');
+  const ss=document.getElementById('sort-select');
+  const tfb=document.getElementById('tag-filter-bar');
+  const fi=document.getElementById('file-input');
 
   function init(){
-    document.getElementById('btn-add-file').addEventListener('click',()=>fileInput.click());
-    fileInput.addEventListener('change',handleFileInput);
-    searchInput.addEventListener('input',onSearch);
-    clearBtn.addEventListener('click',clearSearch);
-    sortSelect.addEventListener('change',()=>{sortMode=sortSelect.value;render()});
-    render();
+    document.getElementById('btn-add-file').addEventListener('click',()=>fi.click());
+    fi.addEventListener('change',onFileInput);
+    si.addEventListener('input',()=>{_q=si.value.trim().toLowerCase();sc.classList.toggle('hidden',!_q);render()});
+    sc.addEventListener('click',()=>{si.value='';_q='';sc.classList.add('hidden');render()});
+    ss.addEventListener('change',()=>{_sort=ss.value;render()});
   }
-  function onSearch(){
-    searchQuery=searchInput.value.trim().toLowerCase();
-    clearBtn.classList.toggle('hidden',searchQuery==='');
-    render();
-  }
-  function clearSearch(){searchInput.value='';searchQuery='';clearBtn.classList.add('hidden');render()}
 
-  async function handleFileInput(e){
+  async function onFileInput(e){
     const files=Array.from(e.target.files);e.target.value='';
     if(!files.length)return;
-    showLoading(`0 / ${files.length} 件 追加中...`);
+    showLoading(`アップロード準備中...`);
     for(let i=0;i<files.length;i++){
-      const file=files[i];
-      await Store.addFile(file,async(id,f)=>{
-        await dbSaveBlob(id,f,(pct)=>{
-          updateLoadingProgress((i/files.length)*100+(1/files.length)*pct);
+      const f=files[i];
+      document.getElementById('loading-message').textContent=`アップロード中 ${i+1}/${files.length}: ${stripExt(f.name)}`;
+      try{
+        const df=await Drive.uploadFile(f,pct=>{
+          updateProgress((i/files.length)*100+(1/files.length)*pct);
         });
-      });
-      document.getElementById('loading-message').textContent=`${i+1} / ${files.length} 件 追加中...`;
+        await Store.addFileMeta(df);
+      }catch(err){
+        alert(`アップロード失敗: ${f.name}\n${err.message}`);
+      }
     }
     hideLoading();render();
   }
 
-  async function deleteFile(id){
-    showLoading('削除中...');updateLoadingProgress(30);
-    await Store.deleteFile(id);
-    updateLoadingProgress(100);hideLoading();render();
+  async function doDelete(id,name){
+    const ok=await Confirm.show(name);
+    if(!ok)return;
+    showLoading('削除中...');updateProgress(20);
+    try{
+      await Drive.deleteFile(id);
+      updateProgress(70);
+      await Store.removeFileMeta(id);
+    }catch(err){
+      hideLoading();alert(`削除失敗: ${err.message}`);return;
+    }
+    updateProgress(100);hideLoading();render();
   }
 
-  function startRename(id,cardEl){
-    const nameEl=cardEl.querySelector('.file-name');
-    const current=nameEl.textContent;
-    const input=document.createElement('input');
-    input.className='file-name-input';input.value=current;
-    nameEl.replaceWith(input);input.focus();input.select();
-    const finish=async()=>{
-      const val=input.value.trim()||current;
-      await Store.renameFile(id,val);render();
-    };
-    input.addEventListener('blur',finish);
-    input.addEventListener('keydown',e=>{
-      if(e.key==='Enter')input.blur();
-      if(e.key==='Escape'){input.value=current;input.blur()}
-    });
-  }
-
-  function getFilteredSorted(){
+  function filtered(){
     let list=Store.getFiles().slice();
-    if(activeTagFilter)list=list.filter(f=>f.tagIds.includes(activeTagFilter));
-    if(searchQuery){
+    if(_tag)list=list.filter(f=>f.tagIds.includes(_tag));
+    if(_q){
       const tags=Store.getTags();
       list=list.filter(f=>{
-        if(f.name.toLowerCase().includes(searchQuery))return true;
-        return f.tagIds.some(tid=>{
-          const t=tags.find(t=>t.id===tid);
-          return t&&t.name.toLowerCase().includes(searchQuery);
-        });
+        if(f.name.toLowerCase().includes(_q))return true;
+        return f.tagIds.some(tid=>{const t=tags.find(t=>t.id===tid);return t&&t.name.toLowerCase().includes(_q)});
       });
     }
-    switch(sortMode){
+    switch(_sort){
       case'added-desc':list.sort((a,b)=>b.addedAt-a.addedAt);break;
       case'added-asc': list.sort((a,b)=>a.addedAt-b.addedAt);break;
       case'name-asc':  list.sort((a,b)=>a.name.localeCompare(b.name,'ja'));break;
@@ -927,111 +1253,102 @@ const FileList=(()=>{
     return list;
   }
 
-  function renderTagFilterBar(){
-    const tags=Store.getTags();
-    tagFilterBar.innerHTML='';
+  function renderTFB(){
+    const tags=Store.getTags();tfb.innerHTML='';
     tags.forEach(tag=>{
-      const chip=document.createElement('button');
-      chip.className='tag-filter-chip';
-      chip.textContent=tag.name;
-      chip.style.borderColor=tag.color;
-      chip.style.color=activeTagFilter===tag.id?'#fff':tag.color;
-      chip.style.background=activeTagFilter===tag.id?tag.color:'transparent';
-      chip.addEventListener('click',()=>{
-        activeTagFilter=(activeTagFilter===tag.id)?null:tag.id;
-        renderTagFilterBar();render();
-      });
-      tagFilterBar.appendChild(chip);
+      const c=document.createElement('button');c.className='tag-filter-chip';
+      c.textContent=tag.name;c.style.borderColor=tag.color;
+      c.style.color=_tag===tag.id?'#fff':tag.color;
+      c.style.background=_tag===tag.id?tag.color:'transparent';
+      c.addEventListener('click',()=>{_tag=(_tag===tag.id)?null:tag.id;renderTFB();render()});
+      tfb.appendChild(c);
     });
   }
 
-  function buildCard(file){
+  function buildRow(file){
     const tags=Store.getTags();
-    const card=document.createElement('div');
-    card.className='file-card';card.setAttribute('role','listitem');card.dataset.id=file.id;
-    card.addEventListener('click',e=>{
-      if(e.target.closest('.file-actions,.file-name-input,.file-tags'))return;
-      App.openPlayer(file.id);
-    });
+    const row=document.createElement('div');
+    row.className='file-row';row.setAttribute('role','listitem');row.dataset.id=file.id;
+    row.addEventListener('click',e=>{if(e.target.closest('.file-row-actions,.file-row-name-input'))return;App.openPlayer(file.id)});
 
-    const top=document.createElement('div');top.className='file-card-top';
-    const thumb=document.createElement('div');thumb.className='file-thumb';
-    thumb.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>`;
+    const icon=document.createElement('div');icon.className='file-row-icon';
+    icon.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>`;
 
-    const info=document.createElement('div');info.className='file-info';
-    const nameEl=document.createElement('div');nameEl.className='file-name';nameEl.textContent=file.name;nameEl.title=file.name;
-    const meta=document.createElement('div');meta.className='file-meta';
+    const body=document.createElement('div');body.className='file-row-body';
+    const nameEl=document.createElement('div');nameEl.className='file-row-name';nameEl.textContent=file.name;nameEl.title=file.name;
+    const meta=document.createElement('div');meta.className='file-row-meta';
     const d=new Date(file.addedAt);
-    meta.textContent=`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}  ${humanSize(file.size)}`;
-    info.appendChild(nameEl);info.appendChild(meta);
-
-    const actions=document.createElement('div');actions.className='file-actions';
-
-    const btnRename=document.createElement('button');
-    btnRename.className='file-action-btn';btnRename.title='名前を編集';
-    btnRename.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
-    btnRename.addEventListener('click',e=>{e.stopPropagation();startRename(file.id,card)});
-
-    const btnTag=document.createElement('button');
-    btnTag.className='file-action-btn';btnTag.title='タグを編集';
-    btnTag.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
-    btnTag.addEventListener('click',e=>{e.stopPropagation();openFileTagModal(file.id)});
-
-    const btnDel=document.createElement('button');
-    btnDel.className='file-action-btn danger';btnDel.title='削除';
-    btnDel.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
-    btnDel.addEventListener('click',e=>{e.stopPropagation();deleteFile(file.id)});
-
-    actions.appendChild(btnRename);actions.appendChild(btnTag);actions.appendChild(btnDel);
-    top.appendChild(thumb);top.appendChild(info);top.appendChild(actions);
-
-    const tagsRow=document.createElement('div');tagsRow.className='file-tags';
+    const dt=document.createElement('span');dt.className='file-meta-text';
+    dt.textContent=`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')} · ${humanSize(file.size)}`;
+    meta.appendChild(dt);
     file.tagIds.forEach(tid=>{
       const t=tags.find(t=>t.id===tid);if(!t)return;
-      const chip=document.createElement('span');
-      chip.className='file-tag-chip';chip.textContent=t.name;chip.style.background=t.color;
-      tagsRow.appendChild(chip);
+      const chip=document.createElement('span');chip.className='file-tag-chip';chip.textContent=t.name;chip.style.background=t.color;meta.appendChild(chip);
+    });
+    body.appendChild(nameEl);body.appendChild(meta);
+
+    const actions=document.createElement('div');actions.className='file-row-actions';
+
+    // Rename
+    const bRn=document.createElement('button');bRn.className='file-action-btn';bRn.title='名前を編集';
+    bRn.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+    bRn.addEventListener('click',e=>{
+      e.stopPropagation();
+      const cur=nameEl.textContent;
+      const inp=document.createElement('input');inp.className='file-row-name-input';inp.value=cur;
+      nameEl.replaceWith(inp);inp.focus();inp.select();
+      const finish=async()=>{const v=inp.value.trim()||cur;await Store.renameFile(file.id,v);render()};
+      inp.addEventListener('blur',finish);
+      inp.addEventListener('keydown',ev=>{if(ev.key==='Enter')inp.blur();if(ev.key==='Escape'){inp.value=cur;inp.blur()}});
     });
 
-    card.appendChild(top);
-    if(file.tagIds.length)card.appendChild(tagsRow);
-    return card;
+    // Tag
+    const bTg=document.createElement('button');bTg.className='file-action-btn';bTg.title='タグを編集';
+    bTg.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`;
+    bTg.addEventListener('click',e=>{e.stopPropagation();openFileTagModal(file.id)});
+
+    // Delete
+    const bDl=document.createElement('button');bDl.className='file-action-btn danger';bDl.title='削除';
+    bDl.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+    bDl.addEventListener('click',e=>{e.stopPropagation();doDelete(file.id,file.name)});
+
+    actions.appendChild(bRn);actions.appendChild(bTg);actions.appendChild(bDl);
+    row.appendChild(icon);row.appendChild(body);row.appendChild(actions);
+    return row;
   }
 
   function render(){
-    renderTagFilterBar();
-    const list=getFilteredSorted();
-    grid.innerHTML='';
-    if(!Store.getFiles().length){emptyState.style.display='flex';return}
-    emptyState.style.display='none';
+    renderTFB();
+    const list=filtered();
+    listEl.innerHTML='';
+    if(!Store.getFiles().length){empty.style.display='flex';return}
+    empty.style.display='none';
     if(!list.length){
-      const msg=document.createElement('div');
-      msg.style.cssText='color:var(--text3);font-size:14px;padding:32px 16px;text-align:center;grid-column:1/-1;';
-      msg.textContent='該当するファイルが見つかりません';
-      grid.appendChild(msg);return;
+      const m=document.createElement('div');
+      m.style.cssText='color:var(--text3);font-size:14px;padding:32px 16px;text-align:center;';
+      m.textContent='該当するファイルが見つかりません';listEl.appendChild(m);return;
     }
-    list.forEach(f=>grid.appendChild(buildCard(f)));
+    list.forEach(f=>listEl.appendChild(buildRow(f)));
   }
 
-  let _editingFileId=null;
-  function openFileTagModal(fileId){
-    _editingFileId=fileId;
-    const file=Store.getFiles().find(f=>f.id===fileId);
+  // File tag modal
+  let _editId=null;
+  function openFileTagModal(id){
+    _editId=id;
+    const file=Store.getFiles().find(f=>f.id===id);
     const tags=Store.getTags();
     const body=document.getElementById('file-tags-body');
     body.innerHTML='';
-    if(!tags.length){
-      body.innerHTML='<p style="color:var(--text3);font-size:14px;">タグがありません。先にタグを作成してください。</p>';
+    if(!tags.length){body.innerHTML='<p style="color:var(--text3);font-size:14px;">タグがありません</p>';
     }else{
       tags.forEach(tag=>{
         const item=document.createElement('label');item.className='file-tag-checkbox-item';
         const cb=document.createElement('input');cb.type='checkbox';cb.checked=file.tagIds.includes(tag.id);
         cb.addEventListener('change',async()=>{
-          const f=Store.getFiles().find(f=>f.id===_editingFileId);
+          const f=Store.getFiles().find(f=>f.id===_editId);
           let ids=f.tagIds.slice();
-          if(cb.checked){if(!ids.includes(tag.id))ids.push(tag.id)}
-          else ids=ids.filter(i=>i!==tag.id);
-          await Store.setFileTags(_editingFileId,ids);render();
+          if(cb.checked){if(!ids.includes(tag.id))ids.push(tag.id)}else ids=ids.filter(i=>i!==tag.id);
+          await Store.setFileTags(_editId,ids);render();
         });
         const lbl=document.createElement('span');lbl.className='file-tag-checkbox-label';
         const dot=document.createElement('span');dot.className='tag-dot-swatch';dot.style.background=tag.color;
@@ -1042,23 +1359,19 @@ const FileList=(()=>{
     document.getElementById('modal-file-tags').classList.remove('hidden');
   }
 
-  document.getElementById('btn-close-file-tags').addEventListener('click',()=>{
-    document.getElementById('modal-file-tags').classList.add('hidden');
-  });
-  document.getElementById('modal-file-tags').addEventListener('click',e=>{
-    if(e.target===e.currentTarget)e.currentTarget.classList.add('hidden');
-  });
+  document.getElementById('btn-close-file-tags').addEventListener('click',()=>document.getElementById('modal-file-tags').classList.add('hidden'));
+  document.getElementById('modal-file-tags').addEventListener('click',e=>{if(e.target===e.currentTarget)e.currentTarget.classList.add('hidden')});
 
   return{init,render};
 })();
 
 /* =====================================================
-   tagEditor.js
+   TAG EDITOR
    ===================================================== */
 const TagEditor=(()=>{
   const modal=document.getElementById('modal-tag-editor');
   const listEl=document.getElementById('tag-editor-list');
-  let dragSrc=null;
+  let _drag=null;
 
   function init(){
     document.getElementById('btn-open-tag-editor').addEventListener('click',open);
@@ -1073,85 +1386,51 @@ const TagEditor=(()=>{
   function renderList(){
     const tags=Store.getTags();listEl.innerHTML='';
     if(!tags.length){listEl.innerHTML='<p style="color:var(--text3);font-size:13px;padding:4px 0;">タグがまだありません</p>';return}
-    tags.forEach(tag=>listEl.appendChild(buildTagItem(tag)));
+    tags.forEach(tag=>listEl.appendChild(buildItem(tag)));
   }
 
-  function buildTagItem(tag){
-    const item=document.createElement('div');
-    item.className='tag-editor-item';item.dataset.id=tag.id;item.draggable=true;
-
+  function buildItem(tag){
+    const item=document.createElement('div');item.className='tag-editor-item';item.dataset.id=tag.id;item.draggable=true;
     const handle=document.createElement('span');handle.className='drag-handle';
-    handle.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`;
-
-    const swatch=document.createElement('div');swatch.className='tag-color-swatch';swatch.style.background=tag.color;
-    const colorPicker=document.createElement('input');colorPicker.type='color';colorPicker.value=tag.color;
-    colorPicker.addEventListener('input',()=>swatch.style.background=colorPicker.value);
-    colorPicker.addEventListener('change',async()=>await Store.updateTag(tag.id,{color:colorPicker.value}));
-    swatch.appendChild(colorPicker);
-
-    const nameEl=document.createElement('input');nameEl.type='text';nameEl.className='tag-editor-name-input';
-    nameEl.value=tag.name;nameEl.maxLength=30;
-    nameEl.addEventListener('change',async()=>{
-      const v=nameEl.value.trim();
-      if(v)await Store.updateTag(tag.id,{name:v});else nameEl.value=tag.name;
-    });
-
-    const btnDel=document.createElement('button');btnDel.className='tag-del-btn';
-    btnDel.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
-    btnDel.addEventListener('click',async()=>{await Store.deleteTag(tag.id);renderList()});
-
-    item.appendChild(handle);item.appendChild(swatch);item.appendChild(nameEl);item.appendChild(btnDel);
-
-    /* Drag events */
-    item.addEventListener('dragstart',e=>{dragSrc=item;item.classList.add('dragging');e.dataTransfer.effectAllowed='move'});
-    item.addEventListener('dragend',()=>{
-      item.classList.remove('dragging');
-      listEl.querySelectorAll('.tag-editor-item').forEach(i=>i.classList.remove('drag-over'));
-      saveNewOrder();
-    });
-    item.addEventListener('dragover',e=>{
-      e.preventDefault();e.dataTransfer.dropEffect='move';
-      listEl.querySelectorAll('.tag-editor-item').forEach(i=>i.classList.remove('drag-over'));
-      if(item!==dragSrc)item.classList.add('drag-over');
-    });
-    item.addEventListener('drop',e=>{
-      e.preventDefault();
-      if(dragSrc&&dragSrc!==item){
-        const items=Array.from(listEl.querySelectorAll('.tag-editor-item'));
-        if(items.indexOf(item)>items.indexOf(dragSrc))item.after(dragSrc);
-        else item.before(dragSrc);
-      }
-    });
-    setupTouchDrag(item);
+    handle.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`;
+    const sw=document.createElement('div');sw.className='tag-color-swatch';sw.style.background=tag.color;
+    const cp=document.createElement('input');cp.type='color';cp.value=tag.color;
+    cp.addEventListener('input',()=>sw.style.background=cp.value);
+    cp.addEventListener('change',async()=>await Store.updateTag(tag.id,{color:cp.value}));
+    sw.appendChild(cp);
+    const ni=document.createElement('input');ni.type='text';ni.className='tag-editor-name-input';ni.value=tag.name;ni.maxLength=30;
+    ni.addEventListener('change',async()=>{const v=ni.value.trim();if(v)await Store.updateTag(tag.id,{name:v});else ni.value=tag.name});
+    const bd=document.createElement('button');bd.className='tag-del-btn';
+    bd.innerHTML=`<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    bd.addEventListener('click',async()=>{await Store.deleteTag(tag.id);renderList()});
+    item.appendChild(handle);item.appendChild(sw);item.appendChild(ni);item.appendChild(bd);
+    item.addEventListener('dragstart',e=>{_drag=item;item.classList.add('dragging');e.dataTransfer.effectAllowed='move'});
+    item.addEventListener('dragend',()=>{item.classList.remove('dragging');listEl.querySelectorAll('.tag-editor-item').forEach(i=>i.classList.remove('drag-over'));saveOrder()});
+    item.addEventListener('dragover',e=>{e.preventDefault();listEl.querySelectorAll('.tag-editor-item').forEach(i=>i.classList.remove('drag-over'));if(item!==_drag)item.classList.add('drag-over')});
+    item.addEventListener('drop',e=>{e.preventDefault();if(_drag&&_drag!==item){const items=Array.from(listEl.querySelectorAll('.tag-editor-item'));if(items.indexOf(item)>items.indexOf(_drag))item.after(_drag);else item.before(_drag)}});
+    touchDrag(item);
     return item;
   }
 
-  async function saveNewOrder(){
-    const newOrder=Array.from(listEl.querySelectorAll('.tag-editor-item')).map(el=>el.dataset.id);
-    await Store.reorderTags(newOrder);
-  }
+  async function saveOrder(){await Store.reorderTags(Array.from(listEl.querySelectorAll('.tag-editor-item')).map(el=>el.dataset.id))}
 
-  function setupTouchDrag(item){
-    let startY=0,startTop=0,clone=null;
+  function touchDrag(item){
+    let y0=0,top0=0,clone=null;
     const handle=item.querySelector('.drag-handle');
     handle.addEventListener('touchstart',e=>{
-      e.preventDefault();
-      const touch=e.touches[0];startY=touch.clientY;
-      const rect=item.getBoundingClientRect();startTop=rect.top;
+      e.preventDefault();const t=e.touches[0];y0=t.clientY;
+      const r=item.getBoundingClientRect();top0=r.top;
       clone=item.cloneNode(true);
-      clone.style.cssText=`position:fixed;left:${rect.left}px;top:${rect.top}px;width:${rect.width}px;opacity:.75;z-index:9999;pointer-events:none;background:var(--accent-bg);border-color:var(--accent);transition:none;`;
+      clone.style.cssText=`position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;opacity:.75;z-index:9999;pointer-events:none;background:var(--accent-bg);transition:none;`;
       document.body.appendChild(clone);item.style.opacity='.3';
     },{passive:false});
     handle.addEventListener('touchmove',e=>{
       e.preventDefault();if(!clone)return;
-      const dy=e.touches[0].clientY-startY;clone.style.top=(startTop+dy)+'px';
-      const cloneCY=clone.getBoundingClientRect().top+clone.getBoundingClientRect().height/2;
-      const siblings=Array.from(listEl.querySelectorAll('.tag-editor-item')).filter(el=>el!==item);
-      siblings.forEach(s=>s.classList.remove('drag-over'));
-      for(const s of siblings){
-        const r=s.getBoundingClientRect();
-        if(cloneCY>=r.top&&cloneCY<=r.bottom){s.classList.add('drag-over');break}
-      }
+      const dy=e.touches[0].clientY-y0;clone.style.top=(top0+dy)+'px';
+      const cy=clone.getBoundingClientRect().top+clone.getBoundingClientRect().height/2;
+      const sibs=Array.from(listEl.querySelectorAll('.tag-editor-item')).filter(s=>s!==item);
+      sibs.forEach(s=>s.classList.remove('drag-over'));
+      for(const s of sibs){const r=s.getBoundingClientRect();if(cy>=r.top&&cy<=r.bottom){s.classList.add('drag-over');break}}
     },{passive:false});
     handle.addEventListener('touchend',async()=>{
       if(!clone)return;clone.remove();clone=null;item.style.opacity='';
@@ -1162,216 +1441,177 @@ const TagEditor=(()=>{
           if(items.indexOf(sib)>items.indexOf(item))sib.after(item);else sib.before(item);
         }
       });
-      await saveNewOrder();
+      await saveOrder();
     });
   }
 
   async function addTag(){
-    const nameInput=document.getElementById('new-tag-name');
-    const colorInput=document.getElementById('new-tag-color');
-    const name=nameInput.value.trim();if(!name)return;
-    await Store.addTag(name,colorInput.value);
-    nameInput.value='';colorInput.value='#3b82f6';renderList();
+    const ni=document.getElementById('new-tag-name'),ci=document.getElementById('new-tag-color');
+    const n=ni.value.trim();if(!n)return;
+    await Store.addTag(n,ci.value);ni.value='';ci.value='#3b82f6';renderList();
   }
-
   return{init};
 })();
 
 /* =====================================================
-   player.js
+   PLAYER
    ===================================================== */
 const Player=(()=>{
   const video=document.getElementById('video-el');
   const controls=document.getElementById('player-controls');
   const seekTrack=document.getElementById('seekbar-track');
-  const seekProgress=document.getElementById('seekbar-progress');
+  const seekProg=document.getElementById('seekbar-progress');
   const seekThumb=document.getElementById('seekbar-thumb');
-  const seekMarkers=document.getElementById('seekbar-markers');
-  const seekLoopRange=document.getElementById('seekbar-loop-range');
-  const timeCurrent=document.getElementById('time-current');
-  const timeTotal=document.getElementById('time-total');
-  const iconPlay=document.getElementById('icon-play');
-  const iconPause=document.getElementById('icon-pause');
-  const speedDisplay=document.getElementById('speed-display');
+  const seekMark=document.getElementById('seekbar-markers');
+  const seekLoop=document.getElementById('seekbar-loop-range');
+  const tCur=document.getElementById('time-current');
+  const tTot=document.getElementById('time-total');
+  const iPlay=document.getElementById('icon-play');
+  const iPause=document.getElementById('icon-pause');
+  const speedDsp=document.getElementById('speed-display');
   const btnUiShow=document.getElementById('btn-ui-show');
   const btnLoopSet=document.getElementById('btn-loop-set');
-  const btnLoopToggle=document.getElementById('btn-loop-toggle');
+  const btnLoopTog=document.getElementById('btn-loop-toggle');
   const btnMirror=document.getElementById('btn-mirror');
 
-  let currentFileId=null,objectUrl=null,speed=1.0;
-  let mirrored=false,uiVisible=true,loopEnabled=false,loopSetStep=0;
-  let isSeeking=false,rafId=null;
+  let _fid=null,_speed=1,_mirror=false,_loopOn=false,_loopStep=0;
+  let _seeking=false,_raf=null;
 
   async function open(fileId){
-    currentFileId=fileId;speed=1.0;mirrored=false;uiVisible=true;loopEnabled=false;loopSetStep=0;
+    _fid=fileId;_speed=1;_mirror=false;_loopOn=false;_loopStep=0;
     showLoading('動画を読み込み中...');
-    if(objectUrl){URL.revokeObjectURL(objectUrl);objectUrl=null}
     video.pause();video.removeAttribute('src');video.load();
-    updateLoadingProgress(20);
-    const blob=await dbGetBlob(fileId);
-    if(!blob){hideLoading();alert('動画ファイルが見つかりません');return}
-    updateLoadingProgress(60);
-    objectUrl=URL.createObjectURL(blob);
-    video.src=objectUrl;
-    video.playbackRate=speed;
-    speedDisplay.textContent=speed.toFixed(2)+'x';
-    await new Promise((resolve,reject)=>{video.onloadedmetadata=resolve;video.onerror=reject}).catch(()=>{});
-    updateLoadingProgress(100);hideLoading();
-    video.classList.toggle('mirrored',mirrored);
-    btnMirror.classList.toggle('active',mirrored);
-    controls.style.display='';
-    btnUiShow.classList.add('hidden');
-    renderSeekbar();updateLoopButtonUI();
-    if(rafId)cancelAnimationFrame(rafId);
-    rafTick();
+
+    /* Ensure SW has current token before setting src */
+    await Auth.ensureSW();
+    await new Promise(r=>setTimeout(r,80)); // small delay for SW to process
+
+    updateProgress(50);
+    const url=Drive.streamUrl(fileId);
+    video.src=url;
+    video.playbackRate=_speed;
+    speedDsp.textContent=_speed.toFixed(2)+'x';
+
+    await new Promise((res,rej)=>{
+      video.onloadedmetadata=res;
+      video.onerror=()=>rej(new Error(video.error?.message||'読み込みエラー'));
+    }).catch(async err=>{
+      /* Retry once after token refresh */
+      try{
+        await Auth.silentRefresh();
+        await Auth.ensureSW();
+        await new Promise(r=>setTimeout(r,80));
+        video.src=url+'&_r=1';
+        await new Promise((res2,rej2)=>{video.onloadedmetadata=res2;video.onerror=()=>rej2(new Error('再試行失敗'))});
+      }catch(e2){
+        hideLoading();alert('動画を読み込めませんでした: '+e2.message);return;
+      }
+    });
+
+    updateProgress(100);hideLoading();
+    video.classList.toggle('mirrored',_mirror);
+    btnMirror.classList.toggle('active',_mirror);
+    controls.style.display='';btnUiShow.classList.add('hidden');
+    renderSeekbar();updateLoopUI();
+    if(_raf)cancelAnimationFrame(_raf);rafTick();
   }
 
   function rafTick(){
-    if(!isSeeking)updateSeekbarUI();
+    if(!_seeking)updateUI();
     enforceLoop();
-    rafId=requestAnimationFrame(rafTick);
+    _raf=requestAnimationFrame(rafTick);
   }
-
   function togglePlay(){if(video.paused)video.play();else video.pause()}
-  video.addEventListener('play',()=>{iconPlay.style.display='none';iconPause.style.display=''});
-  video.addEventListener('pause',()=>{iconPlay.style.display='';iconPause.style.display='none'});
+  video.addEventListener('play',()=>{iPlay.style.display='none';iPause.style.display=''});
+  video.addEventListener('pause',()=>{iPlay.style.display='';iPause.style.display='none'});
 
-  function getSeekPct(clientX){
-    const rect=seekTrack.getBoundingClientRect();
-    return clamp((clientX-rect.left)/rect.width,0,1);
-  }
-  function seekTo(pct){if(!isFinite(video.duration))return;video.currentTime=pct*video.duration}
-
+  function seekPct(cx){const r=seekTrack.getBoundingClientRect();return clamp((cx-r.left)/r.width,0,1)}
+  function seekTo(p){if(!isFinite(video.duration))return;video.currentTime=p*video.duration}
   seekTrack.addEventListener('mousedown',e=>{
-    isSeeking=true;seekTo(getSeekPct(e.clientX));
-    const onMove=e2=>seekTo(getSeekPct(e2.clientX));
-    const onUp=()=>{isSeeking=false;window.removeEventListener('mousemove',onMove);window.removeEventListener('mouseup',onUp)};
-    window.addEventListener('mousemove',onMove);window.addEventListener('mouseup',onUp);
+    _seeking=true;seekTo(seekPct(e.clientX));
+    const mv=e2=>seekTo(seekPct(e2.clientX));
+    const up=()=>{_seeking=false;window.removeEventListener('mousemove',mv);window.removeEventListener('mouseup',up)};
+    window.addEventListener('mousemove',mv);window.addEventListener('mouseup',up);
   });
-  seekTrack.addEventListener('touchstart',e=>{e.preventDefault();isSeeking=true;seekTo(getSeekPct(e.touches[0].clientX))},{passive:false});
-  seekTrack.addEventListener('touchmove',e=>{e.preventDefault();seekTo(getSeekPct(e.touches[0].clientX))},{passive:false});
-  seekTrack.addEventListener('touchend',()=>{isSeeking=false});
+  seekTrack.addEventListener('touchstart',e=>{e.preventDefault();_seeking=true;seekTo(seekPct(e.touches[0].clientX))},{passive:false});
+  seekTrack.addEventListener('touchmove',e=>{e.preventDefault();seekTo(seekPct(e.touches[0].clientX))},{passive:false});
+  seekTrack.addEventListener('touchend',()=>{_seeking=false});
 
-  function updateSeekbarUI(){
-    if(!isFinite(video.duration)||video.duration===0)return;
-    const pct=video.currentTime/video.duration;
-    const p=(pct*100).toFixed(3)+'%';
-    seekProgress.style.width=p;seekThumb.style.left=p;
-    timeCurrent.textContent=formatTime(video.currentTime);
-    timeTotal.textContent=formatTime(video.duration);
+  function updateUI(){
+    if(!isFinite(video.duration)||!video.duration)return;
+    const p=((video.currentTime/video.duration)*100).toFixed(3)+'%';
+    seekProg.style.width=p;seekThumb.style.left=p;
+    tCur.textContent=formatTime(video.currentTime);
+    tTot.textContent=formatTime(video.duration);
   }
-
   function renderSeekbar(){
-    if(!isFinite(video.duration)||video.duration===0)return;
-    const pd=Store.getPlayerData(currentFileId);
-    seekMarkers.innerHTML='';
-    pd.markers.forEach(sec=>{
-      const dot=document.createElement('div');dot.className='seekbar-marker-dot';
-      dot.style.left=((sec/video.duration)*100).toFixed(3)+'%';
-      seekMarkers.appendChild(dot);
+    if(!isFinite(video.duration)||!video.duration)return;
+    const pd=Store.getPD(_fid);
+    seekMark.innerHTML='';
+    pd.markers.forEach(s=>{
+      const d=document.createElement('div');d.className='seekbar-marker-dot';
+      d.style.left=((s/video.duration)*100).toFixed(3)+'%';seekMark.appendChild(d);
     });
-    if(pd.loop&&pd.loop.start!==null){
-      const startPct=(pd.loop.start/video.duration)*100;
-      seekLoopRange.classList.add('visible');
+    if(pd.loop?.start!=null){
+      const sp=(pd.loop.start/video.duration)*100;
+      seekLoop.classList.add('visible');
       seekTrack.querySelectorAll('.seekbar-loop-start,.seekbar-loop-end').forEach(el=>el.remove());
-      const startMark=document.createElement('div');startMark.className='seekbar-loop-start';
-      startMark.style.left=startPct.toFixed(3)+'%';seekTrack.appendChild(startMark);
-      if(pd.loop.end!==null){
-        const endPct=(pd.loop.end/video.duration)*100;
-        seekLoopRange.style.left=startPct.toFixed(3)+'%';
-        seekLoopRange.style.width=(endPct-startPct).toFixed(3)+'%';
-        const endMark=document.createElement('div');endMark.className='seekbar-loop-end';
-        endMark.style.left=endPct.toFixed(3)+'%';seekTrack.appendChild(endMark);
-      }else{
-        seekLoopRange.style.left=startPct.toFixed(3)+'%';seekLoopRange.style.width='0%';
-      }
+      const sm=document.createElement('div');sm.className='seekbar-loop-start';sm.style.left=sp.toFixed(3)+'%';seekTrack.appendChild(sm);
+      if(pd.loop.end!=null){
+        const ep=(pd.loop.end/video.duration)*100;
+        seekLoop.style.left=sp.toFixed(3)+'%';seekLoop.style.width=(ep-sp).toFixed(3)+'%';
+        const em=document.createElement('div');em.className='seekbar-loop-end';em.style.left=ep.toFixed(3)+'%';seekTrack.appendChild(em);
+      }else{seekLoop.style.left=sp.toFixed(3)+'%';seekLoop.style.width='0%'}
     }else{
-      seekLoopRange.classList.remove('visible');
+      seekLoop.classList.remove('visible');
       seekTrack.querySelectorAll('.seekbar-loop-start,.seekbar-loop-end').forEach(el=>el.remove());
     }
   }
-  video.addEventListener('loadedmetadata',()=>{timeTotal.textContent=formatTime(video.duration);renderSeekbar()});
+  video.addEventListener('loadedmetadata',()=>{tTot.textContent=formatTime(video.duration);renderSeekbar()});
 
-  function skip(sec){video.currentTime=clamp(video.currentTime+sec,0,video.duration||0)}
-  function changeSpeed(delta){
-    speed=clamp(Math.round((speed+delta)*20)/20,0.05,10);
-    video.playbackRate=speed;speedDisplay.textContent=speed.toFixed(2)+'x';
-  }
-  function toggleMirror(){
-    mirrored=!mirrored;video.classList.toggle('mirrored',mirrored);btnMirror.classList.toggle('active',mirrored);
-  }
+  function skip(s){video.currentTime=clamp(video.currentTime+s,0,video.duration||0)}
+  function changeSpeed(d){_speed=clamp(Math.round((_speed+d)*20)/20,.05,10);video.playbackRate=_speed;speedDsp.textContent=_speed.toFixed(2)+'x'}
+  function toggleMirror(){_mirror=!_mirror;video.classList.toggle('mirrored',_mirror);btnMirror.classList.toggle('active',_mirror)}
 
-  async function addMarker(){
+  async function addMarker(){if(!isFinite(video.duration))return;await Store.addMarker(_fid,Math.round(video.currentTime*100)/100);renderSeekbar()}
+  async function delMarker(){const d=await Store.delNearestMarker(_fid,video.currentTime);if(d!==undefined)renderSeekbar()}
+  function jumpMarker(){
     if(!isFinite(video.duration))return;
-    const sec=Math.round(video.currentTime*100)/100;
-    await Store.addMarker(currentFileId,sec);renderSeekbar();
+    const b=Store.getPD(_fid).markers.filter(m=>m<=video.currentTime-.1);
+    video.currentTime=b.length?b[b.length-1]:0;
   }
-  async function deleteMarker(){
-    const deleted=await Store.deleteNearestMarkerBefore(currentFileId,video.currentTime);
-    if(deleted!==undefined)renderSeekbar();
-  }
-  function jumpToMarker(){
-    if(!isFinite(video.duration))return;
-    const pd=Store.getPlayerData(currentFileId);
-    const before=pd.markers.filter(m=>m<=video.currentTime-0.1);
-    if(!before.length){video.currentTime=0;return}
-    video.currentTime=before[before.length-1];
-  }
-
   async function handleLoopSet(){
     if(!isFinite(video.duration))return;
-    if(loopSetStep===0){
-      await Store.setLoopStart(currentFileId,video.currentTime);
-      loopSetStep=1;btnLoopSet.classList.add('active');renderSeekbar();
-    }else{
-      const pd=Store.getPlayerData(currentFileId);
-      if(video.currentTime>pd.loop.start){
-        await Store.setLoopEnd(currentFileId,video.currentTime);
-        loopSetStep=0;btnLoopSet.classList.remove('active');renderSeekbar();
-      }
-    }
+    if(_loopStep===0){await Store.setLoopStart(_fid,video.currentTime);_loopStep=1;btnLoopSet.classList.add('active');renderSeekbar()}
+    else{const pd=Store.getPD(_fid);if(video.currentTime>pd.loop.start){await Store.setLoopEnd(_fid,video.currentTime);_loopStep=0;btnLoopSet.classList.remove('active');renderSeekbar()}}
   }
-  function toggleLoop(){
-    const pd=Store.getPlayerData(currentFileId);
-    if(!pd.loop||pd.loop.start===null||pd.loop.end===null)return;
-    loopEnabled=!loopEnabled;updateLoopButtonUI();
-  }
-  async function deleteLoop(){
-    const pd=Store.getPlayerData(currentFileId);
-    if(!pd.loop||pd.loop.start===null)return;
-    await Store.deleteLoop(currentFileId);
-    loopEnabled=false;loopSetStep=0;
-    btnLoopSet.classList.remove('active');renderSeekbar();updateLoopButtonUI();
-  }
+  function toggleLoop(){const pd=Store.getPD(_fid);if(!pd.loop||pd.loop.end==null)return;_loopOn=!_loopOn;updateLoopUI()}
+  async function delLoop(){const pd=Store.getPD(_fid);if(!pd.loop||pd.loop.start==null)return;await Store.delLoop(_fid);_loopOn=false;_loopStep=0;btnLoopSet.classList.remove('active');renderSeekbar();updateLoopUI()}
   function enforceLoop(){
-    if(!loopEnabled)return;
-    const pd=Store.getPlayerData(currentFileId);
-    if(!pd||!pd.loop||pd.loop.start===null||pd.loop.end===null)return;
+    if(!_loopOn)return;const pd=Store.getPD(_fid);
+    if(!pd?.loop||pd.loop.start==null||pd.loop.end==null)return;
     if(video.currentTime>=pd.loop.end)video.currentTime=pd.loop.start;
   }
-  function updateLoopButtonUI(){btnLoopToggle.classList.toggle('active',loopEnabled)}
-
-  function hideUi(){uiVisible=false;controls.style.display='none';btnUiShow.classList.remove('hidden')}
-  function showUi(){uiVisible=true;controls.style.display='';btnUiShow.classList.add('hidden')}
+  function updateLoopUI(){btnLoopTog.classList.toggle('active',_loopOn)}
+  function hideUi(){controls.style.display='none';btnUiShow.classList.remove('hidden')}
+  function showUi(){controls.style.display='';btnUiShow.classList.add('hidden')}
 
   function close(){
-    if(rafId){cancelAnimationFrame(rafId);rafId=null}
+    if(_raf){cancelAnimationFrame(_raf);_raf=null}
     video.pause();video.removeAttribute('src');video.load();
-    if(objectUrl){URL.revokeObjectURL(objectUrl);objectUrl=null}
-    currentFileId=null;showUi();
-    btnMirror.classList.remove('active');btnLoopSet.classList.remove('active');btnLoopToggle.classList.remove('active');
-    iconPlay.style.display='';iconPause.style.display='none';
-    speedDisplay.textContent='1.00x';
-    seekProgress.style.width='0%';seekThumb.style.left='0%';
-    seekMarkers.innerHTML='';seekLoopRange.classList.remove('visible');
+    _fid=null;showUi();
+    btnMirror.classList.remove('active');btnLoopSet.classList.remove('active');btnLoopTog.classList.remove('active');
+    iPlay.style.display='';iPause.style.display='none';
+    speedDsp.textContent='1.00x';seekProg.style.width='0%';seekThumb.style.left='0%';
+    seekMark.innerHTML='';seekLoop.classList.remove('visible');
     seekTrack.querySelectorAll('.seekbar-loop-start,.seekbar-loop-end').forEach(el=>el.remove());
-    timeCurrent.textContent='0:00';timeTotal.textContent='0:00';
+    tCur.textContent='0:00';tTot.textContent='0:00';
   }
 
   document.getElementById('player-wrap').addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
 
   function init(){
-    initNoLongPress();
+    document.querySelectorAll('.ctrl-btn').forEach(b=>b.addEventListener('contextmenu',e=>e.preventDefault()));
     document.getElementById('btn-back').addEventListener('click',()=>{close();App.showFileList()});
     document.getElementById('btn-play-pause').addEventListener('click',togglePlay);
     document.getElementById('btn-back3').addEventListener('click',()=>skip(-3));
@@ -1379,54 +1619,100 @@ const Player=(()=>{
     document.getElementById('btn-back5').addEventListener('click',()=>skip(-5));
     document.getElementById('btn-fwd5').addEventListener('click',()=>skip(5));
     document.getElementById('btn-mirror').addEventListener('click',toggleMirror);
-    document.getElementById('btn-speed-down').addEventListener('click',()=>changeSpeed(-0.05));
-    document.getElementById('btn-speed-up').addEventListener('click',()=>changeSpeed(0.05));
+    document.getElementById('btn-speed-down').addEventListener('click',()=>changeSpeed(-.05));
+    document.getElementById('btn-speed-up').addEventListener('click',()=>changeSpeed(.05));
     document.getElementById('btn-marker-add').addEventListener('click',addMarker);
-    document.getElementById('btn-marker-del').addEventListener('click',deleteMarker);
-    document.getElementById('btn-marker-jump').addEventListener('click',jumpToMarker);
+    document.getElementById('btn-marker-del').addEventListener('click',delMarker);
+    document.getElementById('btn-marker-jump').addEventListener('click',jumpMarker);
     document.getElementById('btn-loop-set').addEventListener('click',handleLoopSet);
     document.getElementById('btn-loop-toggle').addEventListener('click',toggleLoop);
-    document.getElementById('btn-loop-del').addEventListener('click',deleteLoop);
+    document.getElementById('btn-loop-del').addEventListener('click',delLoop);
     document.getElementById('btn-ui-hide').addEventListener('click',hideUi);
     document.getElementById('btn-ui-show').addEventListener('click',showUi);
   }
-
   return{init,open};
 })();
 
 /* =====================================================
-   app.js
+   APP CONTROLLER
    ===================================================== */
 const App=(()=>{
-  const screenFileList=document.getElementById('screen-filelist');
-  const screenPlayer=document.getElementById('screen-player');
+  const sLogin=document.getElementById('screen-login');
+  const sFiles=document.getElementById('screen-filelist');
+  const sPlayer=document.getElementById('screen-player');
+  const btnGoogleLogin=document.getElementById('btn-google-login');
+  const loginError=document.getElementById('login-error');
 
-  function showFileList(){
-    screenPlayer.classList.remove('active');
-    screenFileList.classList.add('active');
-    FileList.render();
+  function _show(el){
+    [sLogin,sFiles,sPlayer].forEach(s=>s.classList.remove('active'));
+    el.classList.add('active');
   }
-  async function openPlayer(fileId){
-    screenFileList.classList.remove('active');
-    screenPlayer.classList.add('active');
-    await Player.open(fileId);
-  }
-  async function boot(){
-    showLoading('初期化中...');updateLoadingProgress(10);
-    await Store.load();updateLoadingProgress(80);
+  function showLogin(){_show(sLogin);loginError.classList.add('hidden')}
+  function showFileList(){_show(sFiles);FileList.render()}
+  async function openPlayer(fileId){_show(sPlayer);await Player.open(fileId)}
+
+  btnGoogleLogin.addEventListener('click',async()=>{
+    loginError.classList.add('hidden');
+    try{
+      await Auth.login();
+      await onAuthenticated();
+    }catch(e){
+      loginError.textContent='ログインに失敗しました: '+e.message;
+      loginError.classList.remove('hidden');
+    }
+  });
+
+  async function onAuthenticated(){
+    showLoading('Drive に接続中...');updateProgress(20);
+    await Store.load();
+    updateProgress(40);
+    try{
+      await Drive.getFolder();updateProgress(60);
+      const driveFiles=await Drive.listFiles();updateProgress(80);
+      await Store.syncWithDrive(driveFiles);updateProgress(100);
+    }catch(e){
+      hideLoading();
+      alert('Drive接続エラー: '+e.message+'\n\nClient IDと承認済みオリジンを確認してください。');
+      showLogin();return;
+    }
+    hideLoading();
     FileList.init();TagEditor.init();Player.init();
-    updateLoadingProgress(100);hideLoading();showFileList();
+    showFileList();
+  }
+
+  async function boot(){
+    showLoading('起動中...');
+
+    /* Register SW */
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('./sw.js').catch(()=>{});
+      navigator.serviceWorker.addEventListener('controllerchange',()=>Auth.ensureSW());
+    }
+
+    /* Check client ID */
+    const cid=Settings.getClientId();
+    if(!cid){hideLoading();showLogin();return}
+
+    /* Init GIS */
+    try{await Auth.init(cid)}catch(e){hideLoading();showLogin();return}
+
+    /* Restore session */
+    if(Auth.restoreSession()){
+      await onAuthenticated();
+    }else{
+      hideLoading();showLogin();
+    }
   }
 
   document.body.addEventListener('touchmove',e=>{
-    const allowed=e.target.closest('.fl-file-grid,.modal-body,.fl-tag-filter-bar');
-    if(!allowed)e.preventDefault();
+    const ok=e.target.closest('.fl-file-list,.modal-body,.fl-tag-filter-bar');
+    if(!ok)e.preventDefault();
   },{passive:false});
   document.addEventListener('gesturestart',e=>e.preventDefault());
   document.addEventListener('gesturechange',e=>e.preventDefault());
   document.addEventListener('gestureend',e=>e.preventDefault());
 
-  return{boot,showFileList,openPlayer};
+  return{boot,showLogin,showFileList,openPlayer};
 })();
 
 document.addEventListener('DOMContentLoaded',()=>App.boot());
