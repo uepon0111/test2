@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>鉄道シミュレーター</title>
+<style>
+:root{--bg:#f3f7fb;--panel:#fff;--ink:#2b3a4a;--sub:#6b7b8c;--line:#dde6ee;--acc:#2f7de1;--accbg:#e6f0ff;--rt:#f08c1a;--bad:#d9382f}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font:14px/1.4 "Hiragino Sans","Yu Gothic UI",Meiryo,system-ui,sans-serif}
+body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+input,select{-webkit-user-select:text;user-select:text}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+[hidden]{display:none!important}
+svg{width:20px;height:20px;flex:none}
+button{display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 10px;border:0;border-radius:10px;background:transparent;color:var(--ink);font:inherit;white-space:nowrap;cursor:pointer}
+@media(hover:hover){button:hover{background:#eef3f8}}
+button:focus-visible{outline:2px solid var(--acc)}
+button.on{background:var(--accbg);color:var(--acc);font-weight:600}
+button.pri{background:var(--acc);color:#fff;font-weight:600}
+button.pri:hover{background:#2468c4}
+button.danger:hover{background:#fdecec;color:var(--bad)}
+label{display:flex;align-items:center;gap:6px;color:var(--sub);padding:0 4px}
+select,input[type=number],input[type=time]{height:34px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);font:inherit}
+input[type=range]{width:90px;accent-color:var(--acc)}
+.panel{pointer-events:auto;touch-action:manipulation;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 6px 22px rgba(40,70,110,.16)}
+/* 画面を 上=ツール / 中央=地図 / 右=ダイヤ / 下=操作とヒント に区切り、各パネルは自分の区画に置く(重ならない) */
+#ui{position:fixed;inset:0;z-index:1;display:grid;pointer-events:none;row-gap:8px;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto minmax(0,1fr) auto auto;grid-template-areas:"bar bar" "map side" "dock side" "foot side";padding:calc(10px + env(safe-area-inset-top,0px)) calc(10px + env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) calc(10px + env(safe-area-inset-left,0px))}
+#map{grid-area:map}
+#bar{grid-area:bar;justify-self:center;max-width:100%;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 8px;padding:6px 8px}
+.brand{display:flex;align-items:center;gap:6px;padding:0 10px 0 6px;border-right:1px solid var(--line);color:var(--acc);font-weight:700;white-space:nowrap}
+.grp{display:flex;align-items:center;gap:2px}
+.grp+.grp{padding-left:8px;border-left:1px solid var(--line)}
+#dock{grid-area:dock;justify-self:center;display:flex;flex-direction:column;align-items:center;gap:8px;max-width:100%;pointer-events:none}
+#selp,#act{display:flex;align-items:center;gap:6px;padding:6px 6px 6px 14px;max-width:100%}
+#sinfo{flex:1;min-width:0;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#act b{padding-right:6px;color:var(--acc);white-space:nowrap}
+#foot{grid-area:foot;display:flex;justify-content:space-between;align-items:flex-end;gap:8px;pointer-events:none}
+#hint{flex:0 1 640px;min-width:0;padding:8px 12px;color:var(--sub);font-size:12.5px}
+#pos{flex:none;padding:6px 10px;color:var(--sub);font-size:12.5px;font-variant-numeric:tabular-nums}
+#dia{grid-area:side;align-self:start;width:340px;max-height:100%;margin-left:8px;display:flex;flex-direction:column;gap:10px;padding:12px;border-top:3px solid var(--rt)}
+.dh,.dr{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.dh b{display:flex;align-items:center;gap:6px;font-size:15px}
+.dh b svg{color:var(--rt)}
+.dh div{display:flex;gap:2px}
+.dn{display:flex;flex-wrap:wrap;gap:2px 12px;margin:0;color:var(--sub);font-size:12px}
+.dn span{display:inline-flex;align-items:center;gap:5px}
+.chip{width:14px;height:6px;border-radius:3px}
+#dw{width:64px;padding:0 6px}
+#dlist{position:relative;flex:1 1 auto;min-height:0;margin:0;padding:0;list-style:none;overflow-y:auto;display:flex;flex-direction:column;gap:6px;touch-action:pan-y}
+#dlist li{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+#dlist li:hover{border-color:#b9c8d8}
+#dlist .no{flex:none;width:22px;height:22px;border-radius:50%;background:var(--rt);color:#fff;font:700 12px/22px system-ui,sans-serif;text-align:center}
+#dlist .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#dlist .nm small{color:var(--sub);font-size:12px}
+#dlist li.cur{border-color:var(--acc);background:var(--accbg)}
+#dlist li.cur .no{background:var(--acc)}
+#dlist li.empty{color:var(--sub);border-style:dashed;cursor:default}
+#dlist select{flex:none;max-width:50%}
+#dlist li{flex-wrap:wrap}
+.sub{flex:1 0 100%;display:flex;align-items:center;gap:6px;padding-left:30px;color:var(--sub);font-size:12px;font-variant-numeric:tabular-nums}
+.sub label{margin-left:auto;padding:0;font-size:12px}
+.sub input{height:30px;width:100px;padding:0 4px}
+.sub .cl{height:28px;padding:0 8px;color:var(--sub)}
+.tn{width:56px;padding:0 6px}
+#clk{width:auto;min-width:112px;padding:0 6px;font-variant-numeric:tabular-nums}
+#dinfo.bad{color:var(--bad)}
+#gl{pointer-events:none}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+#gcv{position:static;inset:auto;width:100%;height:clamp(170px,30vh,260px);touch-action:auto;background:#fbfdff;border:1px solid var(--line);border-radius:8px}
+#gv{display:flex;flex:1 1 auto;flex-direction:column;gap:8px;min-height:0;overflow-y:auto}
+#glg{display:flex;flex-wrap:wrap;gap:2px 4px}
+#glg button{height:28px;padding:0 8px;font-size:12px}
+.tabs{display:flex;gap:2px}
+#dia.wide{width:min(660px,62vw)}
+body{overscroll-behavior:none}
+#dlist select{max-width:60%}
+.stp{display:flex;align-items:center;gap:2px;color:var(--sub);font-size:13px;white-space:nowrap}
+.stp b{min-width:22px;text-align:center;color:var(--ink);font-variant-numeric:tabular-nums}
+.stp button{width:34px;height:34px;padding:0;justify-content:center;background:#eef3f8;font-size:18px;line-height:1}
+.stp button:hover{background:var(--accbg)}
+#psd{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;white-space:normal}
+#psd .seg{display:inline-flex;gap:2px;padding:2px;border-radius:10px;background:#eef3f8}
+#psd .seg button{width:auto;height:30px;padding:0 11px;border-radius:8px;background:transparent;font-size:13px;color:var(--ink)}
+#psd .seg button.on{background:#fff;color:var(--acc);font-weight:600;box-shadow:0 1px 3px rgba(40,70,110,.22)}
+#psd .seg button.no{opacity:.55}
+#psd #pfl{width:auto;padding:0 12px;font-size:13px}
+/* ---- レイアウト固定: 画面幅ごとに「どの行に何を置くか」を決め、折り返しで崩さない ----
+   上バー  : 広い画面=1行 (幅に応じて 文字つき→アイコンのみ) / 狭い・タッチ=3行 (ツール / 再生 / 表示)
+   選択パネル: 広い(900px〜)=行1[名前・番線数・ボタン] 行2[駅の設定] / 狭い=行1[名前・番線数] 行2[駅の設定(縦3段)] 行3[ボタン] */
+#bar{flex-wrap:nowrap}
+.spd{min-width:0}#spd{flex:0 1 90px;min-width:44px}#clk{flex:none}
+#dock{justify-self:stretch;container:dock/inline-size}
+#act{flex-wrap:wrap;row-gap:6px;justify-content:center}
+#selp{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"i p" "d d" "a a";align-items:center;column-gap:6px}
+#sinfo{grid-area:i;min-width:6em}#pst{grid-area:p}
+.acts{grid-area:a;display:flex;align-items:center;gap:6px;margin-top:6px}
+.acts button{flex:1;justify-content:center}
+#psd{grid-area:d;margin-top:6px;flex-direction:column;flex-wrap:nowrap;align-items:stretch;gap:6px}
+#psd .r{display:flex;align-items:center;gap:8px}
+#psd .k{flex:none;color:var(--sub)}
+#psd .r .seg{flex:1 1 auto}#psd .seg button{flex:1 1 0;justify-content:center;padding:0 4px}
+@container dock (min-width:900px){
+#selp{grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"i p a" "d d d"}
+.acts{margin-top:0}
+#psd{flex-direction:row;justify-content:center;align-items:center;gap:14px}
+#psd .r .seg{flex:none}#psd .seg button{flex:none;padding:0 11px}
+}
+@media(max-width:1479px){.brand span{display:none}}
+@media(max-width:1319px){.lbl{display:none}}
+@media(pointer:coarse),(max-width:960px){
+#ui{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr) auto auto auto;grid-template-areas:"foot" "map" "side" "dock" "bar"}
+#bar{width:100%}
+.brand,.zbtn,#pos{display:none}
+.grp+.grp{padding:0;border:0}
+.grp button{flex-direction:column;justify-content:center;gap:0;height:52px;min-width:52px;padding:0 6px;font-size:10.5px}
+.grp .lbl{display:block}
+.spd .lbl{display:none}
+input[type=range]{width:72px}
+#hint{flex:1;padding:6px 10px;font-size:12px;text-align:center}
+#dia{width:auto;margin:0;max-height:min(42vh,340px)}
+#dia button{height:44px;min-width:44px}
+input,select{font-size:16px}
+#dia.wide{width:auto;max-height:min(62vh,480px)}
+#selp,#act{width:100%;padding:8px}
+#act b{flex:1 0 100%}
+#act button{flex:1;justify-content:center}
+.acts button{height:48px;flex-direction:column;gap:2px;font-size:11px;padding:0 4px;min-width:0}
+#pst button{width:44px;height:44px;flex:none}
+#psd .seg button,#psd #pfl{height:40px;min-width:0}
+#psd .k{min-width:4.2em}
+#bar{flex-direction:column;align-items:stretch;gap:6px;width:min(100%,640px);padding:6px}
+#bar .grp{display:grid;gap:4px;padding:0;border:0}
+#bar .grp button{min-width:0}
+#bar .grp:nth-child(2){grid-template-columns:repeat(6,minmax(0,1fr))}
+#bar .grp:nth-child(3){grid-template-columns:52px 52px minmax(0,1fr) auto}
+#bar .grp:nth-child(4){grid-auto-flow:column;grid-auto-columns:minmax(0,1fr)}
+.spd{display:flex;align-items:center;padding:0 8px}.spd input{width:100%}
+}
+/* ---- 追加: 左右上パネル / 一覧の見切れ / 選択・設定済み / 操作中の非表示 ---- */
+#map{position:relative}
+#tl,#tr{position:absolute;top:0;display:flex;gap:2px;padding:4px;pointer-events:auto}
+#tl{left:0}#tr{right:0}
+#tl button,#tr button{width:38px;height:38px;padding:0;justify-content:center}
+body.busy #bar #tg,body.busy #tr{display:none!important}
+#pos:empty{display:none}
+#foot{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,640px) minmax(0,1fr);align-items:end}
+#hint{grid-column:2;text-align:center}#pos{grid-column:3;justify-self:end}
+#selp,#act{min-width:min(100%,460px)}
+#dia{overflow-y:auto}
+#dlist{flex:1 1 auto;min-height:min(220px,34vh)}
+#dlist li{display:grid;grid-template-columns:24px minmax(0,1fr);align-items:start;gap:4px 8px;padding:8px 10px;border-left-width:4px}
+#dlist .no{grid-row:1;margin-top:1px}
+#dlist .nm{grid-column:2;grid-row:1;white-space:normal;overflow:visible;overflow-wrap:anywhere;font-weight:600}
+#dlist select{grid-column:2;grid-row:2;width:100%;max-width:100%;min-width:0;text-overflow:ellipsis}
+#dlist .sub{grid-column:2;grid-row:3;padding-left:0;flex-wrap:wrap}
+#dlist .eta{flex:1 1 auto;min-width:0}
+#dlist li.sel{border-color:var(--rt);background:#fff6e8;box-shadow:0 0 0 2px rgba(240,140,26,.3)}
+#dlist li.set{border-left-color:var(--rt)}
+.tg{display:none;margin-left:6px;padding:0 7px;border-radius:9px;background:#ffe9cc;color:#a85d05;font:600 11px/18px system-ui,sans-serif;vertical-align:1px}
+#dlist li.set .tg{display:inline-block}
+@media(pointer:coarse),(max-width:960px){#dia{max-height:min(60vh,500px)}#dia.wide{max-height:min(64vh,500px)}#tl,#tr{padding:3px}#tr button{width:44px;height:44px}}
+/* ---- 追加: 項目の種類別の配色 / 発車時刻の既定値 / 複製 ---- */
+#dlist li.kg{border-left-color:#2f7de1}#dlist li.kt{border-left-color:#8e44ad}#dlist li.kp{border-left-color:#7b8794}#dlist li.kb{border-left-color:#d6336c}
+#dlist li.kg .no{background:#2f7de1}#dlist li.kt .no{background:#8e44ad}#dlist li.kp .no{background:#7b8794}#dlist li.kb .no{background:#d6336c}
+#dlist li.cur{border-color:#1fa971;background:#e9f8f1}#dlist li.cur .no{box-shadow:0 0 0 3px rgba(31,169,113,.45)}
+#dlist li.sel{border-color:#1f2d3d;background:#f1f5f9;box-shadow:0 0 0 2px rgba(31,45,61,.22)}
+.sub input.df{color:var(--sub);font-style:italic}
+.dr{flex-wrap:wrap}
+#dia :disabled{opacity:.55;cursor:not-allowed}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas><canvas id="c"></canvas>
+<div id="ui">
+  <div id="bar" class="panel">
+    <div class="brand" data-i="trn"><span>鉄道シミュレーター</span></div>
+    <div class="grp" id="tg">
+      <button data-tool="sel" data-i="sel" title="操作 (V)"><span class="lbl">操作</span></button>
+      <button data-tool="lay" data-i="lay" title="線路を敷く (L)"><span class="lbl">敷設</span></button>
+      <button data-tool="sta" data-i="sta" title="駅を置く (S)"><span class="lbl">駅</span></button>
+      <button data-tool="erase" data-i="era" title="削除 (E)"><span class="lbl">削除</span></button>
+      <button data-tool="train" data-i="trn" title="列車を置く (T)"><span class="lbl">列車</span></button>
+      <button id="dopen" data-i="clock" title="ダイヤ設定 (D)"><span class="lbl">ダイヤ</span></button>
+    </div>
+    <div class="grp">
+      <button id="undo" data-i="undo" title="元に戻す (Ctrl+Z)"><span class="lbl">戻す</span></button>
+      <button id="play" title="再生 / 停止 (Space)"></button>
+      <label class="spd"><span class="lbl">速度</span><input id="spd" type="range" min="1" max="10" step=".5" value="3" title="時間の進む速さ (1マスの走行=20秒)"></label><input id="clk" type="time" step="1" title="現在時刻 (変更できます)" aria-label="現在時刻">
+    </div>
+    </div>
+  <div id="map">
+    <div id="tl" class="panel zbtn"><button id="zo" data-i="minus" title="縮小" aria-label="縮小"></button><button id="zi" data-i="plus" title="拡大" aria-label="拡大"></button></div>
+    <div id="tr" class="panel"><button id="home" data-i="home" title="原点に戻る" aria-label="原点に戻る"></button><button id="v3" data-i="cube" title="擬似3D表示 (3)" aria-label="3D表示"></button><button id="clr" class="danger" data-i="trash" title="すべて削除" aria-label="すべて削除"></button></div>
+  </div>
+  <div id="dia" class="panel" hidden role="dialog" aria-label="列車ダイヤ">
+    <div class="dh"><b data-i="clock">列車ダイヤ</b><div><button id="dfit" data-i="fit" title="経路全体を地図に表示"><span>経路全体</span></button><button id="dx" data-i="x" title="閉じる (Esc)"></button></div></div>
+    <div class="dr"><label>列車<select id="dtrain" aria-label="ダイヤを設定する列車"></select></label><div class="tabs"><button id="tset" class="on">設定</button><button id="tgr">ダイヤグラム</button></div></div><div class="dr st"><label>停車時間<input id="dw" type="number" min="0" max="600" step="5">秒</label><button id="dflip" data-i="swap">向き反転</button></div><div class="dr st"><label>繰り返し間隔<input id="dh" class="tn" type="number" min="0" max="23" step="1" aria-label="時間">時間<input id="dm" class="tn" type="number" min="0" max="59" step="1" aria-label="分">分</label></div><div class="dr st"><label>複製<input id="dcm" class="tn" type="number" min="1" max="1439" step="1" value="10" aria-label="何分後">分後に走らせる</label><button id="dclone" data-i="plus">複製</button></div><p id="dpar" class="dn st" hidden></p><p id="dinfo" class="dn st"></p>
+    <p class="dn st"><span><i class="chip" style="background:#f08c1a;height:8px"></i>通る経路</span><span><i class="chip" style="background:#2f7de1;"></i>停車</span><span><i class="chip" style="background:#8e44ad;"></i>折返</span><span><i class="chip" style="background:#7b8794;"></i>通過</span><span><i class="chip" style="background:#d6336c;"></i>分岐</span><span><i class="chip" style="background:#e9f8f1;border:2px solid #1fa971;height:10px"></i>次に着く項目</span><span><i class="chip" style="background:#fff;border:2px solid #1f2d3d;height:10px"></i>選択中</span><span>行をタップ/操作で地図の中心に表示</span></p>
+    <ol id="dlist" class="st"></ol>
+    <div id="gv" hidden><div class="dr"><label>表示範囲 (現在から)<select id="gspan"><option value="1800">30分</option><option value="3600" selected>1時間</option><option value="7200">2時間</option><option value="14400">4時間</option></select></label></div><canvas id="gcv"></canvas><div id="glg"></div><p class="dn">横軸=時刻 / 縦軸=駅 / 太いオレンジ=選択中の列車 / 凡例をタップで列車を切替</p></div>
+  </div>
+  <div id="dock">
+    <div id="selp" class="panel" hidden>
+      <span id="sinfo"></span><span id="pst" class="stp" hidden>ホーム<button id="pm" aria-label="ホームを減らす">−</button><b id="pcn">1</b><button id="pp" aria-label="ホームを増やす">＋</button></span><div id="psd" class="stp" hidden></div>
+      <div class="acts"><button id="sdia" class="pri" data-i="clock"><span>ダイヤ</span></button>
+      <button id="sact" data-i="swap"><span id="sactl"></span></button>
+      <button id="sdel" class="danger" data-i="trash">削除</button>
+      <button id="sx" data-i="x">解除</button></div>
+    </div>
+    <div id="act" class="panel" hidden>
+      <b>敷設中</b>
+      <button id="ok" class="pri" data-i="check" hidden>確定</button>
+      <button id="done" data-i="flag">終了</button>
+    </div>
+  </div>
+  <div id="foot"><div id="hint" class="panel"></div><div id="pos" class="panel"></div></div>
+</div>
+<script>
+const I={
+sel:'<path d="M5 3l14 7-6 2-2 6z"/>',
+lay:'<path d="M8 3L5 21M16 3l3 18M7.2 8h9.6M6.3 13h11.4M5.5 18h13"/>',
+era:'<path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7M5 11l9 9"/>',
+trn:'<rect x="5" y="3" width="14" height="14" rx="3"/><path d="M5 10h14M8 21l1.5-4M16 21l-1.5-4"/><circle cx="9" cy="13.5" r=".8"/><circle cx="15" cy="13.5" r=".8"/>',
+play:'<path d="M7 4.5v15l12-7.5z"/>',
+pause:'<path d="M8 5v14M16 5v14"/>',
+home:'<circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>',
+trash:'<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>',
+plus:'<path d="M12 5v14M5 12h14"/>',
+minus:'<path d="M5 12h14"/>',
+undo:'<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-3"/>',
+check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+flag:'<path d="M5 21V4M5 4h11l-2 4 2 4H5"/>',
+x:'<path d="M6 6l12 12M18 6L6 18"/>',
+swap:'<path d="M7 4L3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/>',
+sta:'<circle cx="12" cy="8" r="5"/><path d="M12 13v8M8 21h8"/>',
+clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+fit:'<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+cube:'<path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/>'};
+const ic=k=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${I[k]}</svg>`;
+document.querySelectorAll('[data-i]').forEach(b=>b.insertAdjacentHTML('afterbegin',ic(b.dataset.i)));
+
+const HINT={
+sel:'操作: ドラッグで移動 / ホイールで拡大縮小 / 列車・駅をクリックで選択 (駅は番線数とホームを設定、列車は「ダイヤ」で運行設定) / 長押しで線路を選択',
+lay:'敷設: 始点→終点の順にクリックで敷設 (直線と45°で自動接続)。続けて延長するときはShiftを押しながらクリック。既存の線路上の点から始めると分岐。同じ点の再クリック・右クリック・Escで取り消し',
+erase:'削除: 線路や列車をクリック、またはなぞって削除',
+train:'列車: 線路上をクリックして設置 (ダイヤは操作ツールで列車を選んで設定)',
+sta:'駅: 地面の点をクリックで新設 (線路は自動で敷設、既存の線路があれば利用) / 赤い表示=ぶつかる場所 / 駅をもう一度クリックで撤去'};
+const coarse=matchMedia('(pointer:coarse)').matches;
+const HINT_T={
+sel:'操作: ドラッグで移動 / 2本指で拡大縮小 / 列車・駅をタップで選択 (駅は番線数とホームを設定) / 長押しで線路を選択',
+lay:'敷設: 始点→終点の順にタップ。プレビュー後、同じ点を再タップか「確定」で敷設。線路上の点から始めると分岐',
+erase:'削除: 線路や列車をタップ、またはなぞって削除 / 2本指で移動と拡大縮小',
+train:'列車: 線路上をタップして設置 / ダイヤは操作ツールで列車を選んで設定',
+sta:'駅: 点をタップで新設 (線路は自動で敷設) / 赤い表示=ぶつかる場所 / 再タップで撤去 / 2本指で移動と拡大縮小'};
+const actEl=document.getElementById('act'),okEl=document.getElementById('ok');
+const cv=document.getElementById('c'),cx=cv.getContext('2d'),hintEl=document.getElementById('hint'),posEl=document.getElementById('pos'),playEl=document.getElementById('play');
+const DIRS=[[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]];
+/* ---- 寸法 (すべて「1マス=1」の単位)。ここを変えると線路・ホーム・駅舎・列車の大きさが連動する ----
+   bed=道床の幅 / slp=枕木の長さ / tw=線路中心からホーム縁まで / pw=ホーム幅 / pl=ホームの半分の長さ / bd=駅舎の奥行き / tl=列車の長さ / trw=列車の幅
+   比率: 列車幅(.38) < 道床(.56) < ホーム幅(1.3) / 列車の長さ(1.4) はホーム全長(2.6)に収まる / 2番線以降の線路間隔(2マス)=tw*2+pw で島式ホームがちょうど収まる */
+const SZ={bed:.56,slp:.44,tw:.35,pw:1.3,pl:1.3,bd:1.3,tl:1.4,trw:.38};
+const edges=new Map(),trains=[],stations=new Map(),pl=new Map(),pn=new Map(),PMAX=5;let tid=0;
+let mT=0;const kk=(x,y)=>x+','+y,xy=k=>k.split(',').map(Number),msg=t=>{hintEl.textContent=t;mT=performance.now()};
+let psel=0,pk=null,W,H,dpr,cam={x:0,y:0,z:40},tool='lay',run=true,speed=3,chain=null,hover=null,hl=null,deg=new Map(),drag=null,dtr=null,fk=null,curN=-2,ver=0,R=null,anc=null;
+
+/* ---- 線路データ ---- */
+const norm=(a,b,c,d)=>(a>c||(a===c&&b>d))?[c,d,a,b]:[a,b,c,d];
+const addE=(a,b,c,d)=>{const e=norm(a,b,c,d);edges.set(e.join(),e)};
+const has=(a,b,c,d)=>edges.has(norm(a,b,c,d).join());
+const dirIdx=(dx,dy)=>DIRS.findIndex(d=>d[0]===Math.sign(dx)&&d[1]===Math.sign(dy));
+const outs=(x,y,di)=>[0,1,7].map(d=>(di+d)%8).filter(i=>has(x,y,x+DIRS[i][0],y+DIRS[i][1]));
+function delE(k){edges.delete(k);for(let i=trains.length-1;i>=0;i--){const t=trains[i];if(norm(t.ax,t.ay,t.bx,t.by).join()===k)trains.splice(i,1)}}
+function rebuild(){deg=new Map();for(const e of edges.values())for(const k of[e[0]+','+e[1],e[2]+','+e[3]])deg.set(k,(deg.get(k)||0)+1);
+  for(const k of stations.keys())if(!deg.has(k))stations.delete(k);
+  pn.clear();for(const[k,[n,di,bs]]of[...pl]){const pp=stations.has(k)&&bs&&platPlan(k,di,n,bs);if(!pp||!pp.E.every(e=>has(...e)))pl.delete(k);else pp.N.forEach((q,i)=>{if(q)pn.set(q,{s:k,i})})}
+  save()}
+let svT=0,svW=0;
+function save(){ver++;if(!svT)svT=setTimeout(flush,400)}
+function flush(){svT=0;try{localStorage.setItem('rail1',JSON.stringify([...edges.values()]));localStorage.setItem('rail2',JSON.stringify({s:[...stations],p:[...pl],t:trains.map(({id,ax,ay,bx,by,cf,dw,iv,pid,off})=>({i:id,ax,ay,bx,by,cf,dw,iv,pid,off}))}))}catch(_){if(!svW){svW=1;msg('ブラウザに保存できません (プライベートモードか容量不足)')}}}
+function load(){try{const s=localStorage.getItem('rail1');if(s===null)return false;JSON.parse(s).forEach(e=>{if(Array.isArray(e)&&e.length===4&&e.every(Number.isInteger))addE(...e)});
+  const x=JSON.parse(localStorage.getItem('rail2')||'{}');(x.s||[]).forEach(([k,n])=>stations.set(k,n));(x.p||[]).forEach(([k,v])=>pl.set(k,v));
+  const im=new Map();(x.t||[]).forEach(t=>{if(!has(t.ax,t.ay,t.bx,t.by))return;
+    if(!t.cf){t.cf={s:{},b:{}};if(t.d&&t.d.length){for(const k of stations.keys())t.cf.s[k]='p';t.d.forEach(s=>{if(s.a in ST&&t.cf.s[s.k]==='p')t.cf.s[s.k]=s.a})}}   /* 旧ダイヤの駅設定を移行 */
+    delete t.d;delete t.n;t.cf.d=t.cf.d||{};t.cf.s=t.cf.s||{};t.cf.b=t.cf.b||{};if(!(t.dw>=0))t.dw=30;const n={...t,t:0,id:++tid};im.set(t.i,n);delete n.i;trains.push(n)});for(const n of trains)if(n.pid!=null){const p=im.get(n.pid);if(p&&p!==n){n.pid=p.id;n.w=clock+(n.off||0);n.wk=''}else delete n.pid}relink();return true}catch(_){edges.clear();stations.clear();pl.clear();trains.length=0;return false}}
+
+/* 経由地間を 直線 + 45°斜め で結ぶ */
+function route(a,b,pd){
+  const dx=b.x-a.x,dy=b.y-a.y,ax=Math.abs(dx),ay=Math.abs(dy),sx=Math.sign(dx),sy=Math.sign(dy),m=Math.min(ax,ay),s=Math.max(ax,ay)-m;
+  const seg=[[ax>=ay?[sx,0]:[0,sy],s],[[sx,sy],m]];
+  if(pd>=0&&pd%2)seg.reverse();
+  const pts=[{x:a.x,y:a.y}];let x=a.x,y=a.y;
+  for(const[d,n]of seg)for(let i=0;i<n;i++){x+=d[0];y+=d[1];pts.push({x,y})}
+  return pts;
+}
+function lay(a,b,pd){
+  const p=route(a,b,pd),n=p.length;
+  for(let i=1;i<n;i++)addE(p[i-1].x,p[i-1].y,p[i].x,p[i].y);
+  return n>1?dirIdx(p[n-1].x-p[n-2].x,p[n-1].y-p[n-2].y):pd;
+}
+function layTo(p,keep){   /* 始点→終点で1本敷設して終わり。続けて延長するのは Shift を押しながら */
+  if(!chain){chain={p,pd:-1};return}
+  if(p.x===chain.p.x&&p.y===chain.p.y){chain=null;return}
+  snap();const pd=lay(chain.p,p,chain.pd);chain=keep?{p,pd}:null;rebuild();
+}
+
+/* ---- 当たり判定 ---- */
+function dseg(px,py,e){const dx=e[2]-e[0],dy=e[3]-e[1];let t=((px-e[0])*dx+(py-e[1])*dy)/(dx*dx+dy*dy);t=Math.max(0,Math.min(1,t));return[Math.hypot(px-e[0]-t*dx,py-e[1]-t*dy),t]}
+function nearEdge(w,r){let best=null;if(!(r>0)||!isFinite(w.x+w.y))return null;const N=Math.ceil(r)+1,ox=Math.round(w.x),oy=Math.round(w.y);
+  for(let x=ox-N;x<=ox+N;x++)for(let y=oy-N;y<=oy+N;y++)for(let i=0;i<4;i++){const q=DIRS[i],k=norm(x,y,x+q[0],y+q[1]).join(),e=edges.get(k);if(!e)continue;const[d,t]=dseg(w.x,w.y,e);if(d<r){r=d;best={k,e,t}}}
+  return best}
+const tpos=t=>{const f=t.t/Math.hypot(t.bx-t.ax,t.by-t.ay);return{x:t.ax+(t.bx-t.ax)*f,y:t.ay+(t.by-t.ay)*f}};
+let yaw=-.6,tilt=.66,k3=0,v3=false;   /* 擬似3D: 回転角 / 傾き(縦の圧縮率) / 切替の進行 0〜1 */
+const lin=()=>{const a=yaw*k3;return{s:Math.sin(a),c:Math.cos(a),y:1+(tilt-1)*k3}};
+const s2w=(x,y)=>{const{s,c,y:q}=lin(),u=x-W/2,v=(y-H/2)/q;return{x:(c*u+s*v)/cam.z+cam.x,y:(c*v-s*u)/cam.z+cam.y}};
+
+/* ---- 列車 ---- */
+function addTrain(w){const n=nearEdge(w,hit(.6,26));if(!n)return;const e=n.e;snap();trains.push({id:++tid,ax:e[0],ay:e[1],bx:e[2],by:e[3],t:n.t*Math.hypot(e[2]-e[0],e[3]-e[1]),cf:{s:{},b:{},d:{}},dw:30,iv:0});save()}
+const rmTrain=t=>{snap();trains.splice(trains.indexOf(t),1);save()};
+const nm=()=>{const u=new Set(stations.values());let i=1;while(u.has('駅'+i))i++;return'駅'+i};
+function nearS(w,r){let b=null,best=1e9;for(const k of stations.keys()){const[x,y]=xy(k),[n,di,bs]=pget(k),D=DIRS[di],L=Math.hypot(...D),dx=w.x-x,dy=w.y-y,u=(dx*D[0]+dy*D[1])/L,v=-bs*(dy*D[0]-dx*D[1])/L,m=Math.hypot(dx,dy);
+  if((m<r||(Math.abs(u)<SZ.pl+.2&&v>-(SZ.tw+SZ.pw+.3+SZ.bd+.15)&&v<(n-1)*2*L+SZ.tw+SZ.pw+.05))&&m<best){best=m;b=k}}return b}
+/* ---- 駅のホーム: 番線を増やすと、駅舎と反対側に平行な線路だけを敷く (本線とは自動でつながない。ダイヤの分岐項目で番線を選べる) ---- */
+const ck=k=>{const p=pn.get(k);return p?p.s:k},sname=k=>stations.get(ck(k))||'';
+const sp=k=>{const p=pn.get(k),v=pl.get(p?p.s:k);return v&&v[0]>1?` <small>${(p?p.i:0)+1}番線</small>`:''};
+function dest(x,y,w){for(let g=0;g<14;g++){x+=DIRS[w][0];y+=DIRS[w][1];const k=kk(x,y),p=pn.get(k);if(p)return p;if(stations.has(k))return{s:k,i:0};const al=outs(x,y,w);if(!al.length)return null;w=al[0]}return null}
+const dl=(key,v)=>{const[k,di]=key.split('|'),[x,y]=xy(k),d=dest(x,y,(+di+BO[v])%8);return d?` → ${stations.get(d.s)} ${d.i+1}番線`:''};
+function axis(k){const[x,y]=xy(k);let r=-1;for(let i=3;i>=0;i--){const d=DIRS[i],a=has(x,y,x+d[0],y+d[1]),b=has(x,y,x-d[0],y-d[1]);if(a&&b)return i;if(a||b)r=i}return r}
+/* 駅舎は線路の少ない側に建てる (+1=進行方向の右 / -1=左)。ホームは駅舎に近い線から 1番線・2番線… */
+const bside=(k,di)=>{const[x,y]=xy(k),D=DIRS[di],P=DIRS[(di+2)%8],o=s=>{let q=0;for(let t=-2;t<=2;t++)for(let m=1;m<=3;m++)if(deg.has(kk(x+t*D[0]+s*m*P[0],y+t*D[1]+s*m*P[1])))q++;return q};return o(1)<o(-1)?1:-1};
+/* pl: 駅 -> [番線数, 本線の向き, 駅舎の側, 各番線のホーム(0=なし 1=右 2=左 3=両側)] */
+const pget=k=>{const p=pl.get(k),di=p?p[1]:Math.max(0,axis(k)),bs=p?p[2]:bside(k,di);return[p?p[0]:1,di,bs,p?p[3]:[bs>0?1:2]]};
+function platPlan(k,di,n,bs){   /* 駅舎と反対側へ、本線と平行な線路だけを2マス間隔で敷く (本線へのつなぎは敷設ツールで自分で引く) */
+  const[x,y]=xy(k),D=DIRS[di],P=DIRS[(di+2)%8],T=di%2?2:3,E=[],N=[];
+  for(let i=1;i<n;i++){const o=-bs*2*i;let p=[x+o*P[0]-T*D[0],y+o*P[1]-T*D[1]];
+    for(let q=0;q<2*T;q++){E.push([p[0],p[1],p[0]+D[0],p[1]+D[1]]);p=[p[0]+D[0],p[1]+D[1]]}
+    N[i]=kk(x+o*P[0],y+o*P[1])}
+  return{E,N};
+}
+function fits(k,di,n,E,old){   /* 本線が駅の前後で直線か、新しい線路が他の線路とぶつからないか */
+  const[x,y]=xy(k),D=DIRS[di],free=new Set(old.flatMap(e=>[kk(e[0],e[1]),kk(e[2],e[3])]));
+  for(let t=-2;t<2;t++)if(!has(x+t*D[0],y+t*D[1],x+(t+1)*D[0],y+(t+1)*D[1]))return false;
+  return E.every(e=>[[e[0],e[1]],[e[2],e[3]]].every(([a,b])=>free.has(kk(a,b))||!deg.has(kk(a,b))));
+}
+const sw=f=>f===1?2:f===2?1:f;
+function setPl(k,n,bsN,sdN,quiet){   /* 番線数・駅舎の側・各番線のホームを変更する */
+  const[n0,di,b0,s0]=pget(k),bs=bsN||b0;n=Math.max(1,Math.min(PMAX,n));
+  const old=n0>1?platPlan(k,di,n0,b0).E:[],nw=n>1?platPlan(k,di,n,bs):null;
+  if(nw&&(n!==n0||bs!==b0)&&!fits(k,di,n,nw.E,old)){msg('ホームを増やせません: 駅舎と反対側に、並行する線路を敷く空きが必要です (「駅舎⇄」で駅舎を反対側へ移せます)');return}
+  if(!quiet)snap();
+  const keep=new Set((nw?nw.E:[]).map(e=>norm(...e).join()));
+  old.forEach(e=>{const q=norm(...e).join();if(!keep.has(q))delE(q)});
+  if(nw)nw.E.forEach(e=>addE(...e));
+  const sd=(sdN||s0.map(f=>bs===b0?f:sw(f))).slice(0,n);while(sd.length<n)sd.push(bs>0?1:2);
+  pl.set(k,[n,di,bs,isl(sd,bs)]);rebuild();
+}
+const rmSta=k=>{setPl(k,1,0,0,true);stations.delete(k);pl.delete(k)};
+/* ---- ホーム: 隣り合う番線が共有する側は 1つの島式ホームにまとめる ---- */
+const isl=(sd,bs)=>{const N=bs>0?1:2,F=3-N,o=sd.slice();for(let i=0;i<o.length-1;i++)if((o[i]&F)||(o[i+1]&N)){o[i]|=F;o[i+1]|=N}return o};
+function prects(sd,bs,g,tw,PW){   /* [奥行きの始点,終点,種類(0=反対側 1=駅舎側 2=島式),番線,番線2] */
+  const N=bs>0?1:2,F=3-N,o=[];
+  sd.forEach((f,i)=>{const c=i*g;
+    if((f&N)&&!(i&&(sd[i-1]&F)))o.push([c-tw-PW,c-tw,1,i,i]);
+    if(f&F)o.push((sd[i+1]&N)?[c+tw,c+g-tw,2,i,i+1]:[c+tw,c+tw+PW,0,i,i])});
+  return o}
+/* ---- 駅の新設: 線路を自動で敷き、ぶつかる場所を調べて赤く示す ---- */
+const sat=(A,B)=>{for(const P of[A,B])for(let i=0;i<P.length;i++){const a=P[i],b=P[(i+1)%P.length],nx=a[1]-b[1],ny=b[0]-a[0],pa=A.map(p=>p[0]*nx+p[1]*ny),pb=B.map(p=>p[0]*nx+p[1]*ny);
+  if(Math.max(...pa)<=Math.min(...pb)+1e-9||Math.max(...pb)<=Math.min(...pa)+1e-9)return false}return true};
+const FP=(x,y,di,bs,sd)=>{const D=DIRS[di],P=DIRS[(di+2)%8],L=Math.hypot(...D),yN=-(SZ.tw+SZ.pw+.3),
+  Q=(a,b)=>[[-SZ.pl,a],[SZ.pl,a],[SZ.pl,b],[-SZ.pl,b]].map(([u,v])=>[x+(u*D[0]-bs*v*P[0])/L,y+(u*D[1]-bs*v*P[1])/L]);
+  return[...prects(sd,bs,2*L,SZ.tw,SZ.pw).map(r=>Q(r[0],r[1])),Q(yN-SZ.bd,yN)]};   /* 駅が占める範囲 (ホーム+駅舎) */
+function stPlan(x,y,di,bs){
+  const D=DIRS[di],E=[],sg=e=>[[e[0],e[1]],[e[2],e[3]]];
+  for(let t=-3;t<3;t++){const e=[x+t*D[0],y+t*D[1],x+(t+1)*D[0],y+(t+1)*D[1]];if(!has(...e))E.push(e)}   /* 既存の線路はそのまま使い、足りない所だけ敷く */
+  const F=FP(x,y,di,bs,[bs>0?1:2]),o=[];
+  for(const e of edges.values()){if(Math.abs(e[0]-x)>7||Math.abs(e[1]-y)>7)continue;const q=sg(e);if(F.some(r=>sat(r,q))||E.some(n=>sat(sg(n),q)))o.push({e})}
+  for(const k2 of stations.keys()){const[a,b]=xy(k2);if(k2===kk(x,y)||Math.abs(a-x)>12||Math.abs(b-y)>12)continue;
+    const[n2,d2,b2,s2]=pget(k2),G=FP(a,b,d2,b2,s2);if(G.some(g=>F.some(r=>sat(r,g))||E.some(n=>sat(sg(n),g))))o.push({G})}
+  return{x,y,di,bs,E,F,o}}
+function stBest(x,y){const b=stBest0(x,y);if(!b.o.length||deg.has(kk(x,y)))return b;
+  for(const[dx,dy]of DIRS){const a=x+dx,c=y+dy,k=kk(a,c);if(!deg.has(k)||stations.has(k)||pn.has(k))continue;const p=stBest0(a,c);if(!p.o.length)return p}   /* ぶつかる時は隣の既存の線路を使う */
+  return b}
+function stBest0(x,y){const k=kk(x,y),A=[];
+  if(deg.has(k)){const a=axis(k);for(let i=0;i<4;i++){const d=DIRS[i];if(has(x,y,x+d[0],y+d[1])||has(x,y,x-d[0],y-d[1]))A.push(i)}A.sort((p,q)=>(q===a)-(p===a))}   /* 既存の線路の向きを優先 */
+  if(!A.length)A.push(0,2,1,3);
+  let b=null;for(const di of A){const s=bside(k,di);for(const bs of[s,-s]){const p=stPlan(x,y,di,bs);if(!p.o.length)return p;if(!b||p.o.length<b.o.length)b=p}}
+  return b}
+let stC=null,stBad=null;
+const stBestC=(x,y)=>{const key=x+','+y+','+ver;if(!stC||stC.key!==key)stC={key,q:stBest(x,y)};return stC.q};
+function stPrev(X,Y,z){   /* 駅ツールの予告表示: 青=設置できる / 赤=ぶつかる所 */
+  if(hover&&stations.has(kk(hover.x,hover.y))){cx.beginPath();cx.arc(X(hover.x),Y(hover.y),Math.max(12,z*.4),0,7);cx.strokeStyle='#d9382f';cx.lineWidth=3;cx.stroke();return}
+  const q=hover?stBestC(hover.x,hover.y):stBad&&performance.now()-stBad.t<4000?stBad.q:null;if(!q)return;
+  const ok=!q.o.length,col=ok?'#2f7de1':'#d9382f',
+    poly=(P,f,s)=>{cx.beginPath();P.forEach((p,i)=>i?cx.lineTo(X(p[0]),Y(p[1])):cx.moveTo(X(p[0]),Y(p[1])));cx.closePath();cx.fillStyle=f;cx.fill();if(s){cx.strokeStyle=s;cx.lineWidth=2.5;cx.stroke()}},
+    seg=(e,c,w)=>{cx.beginPath();cx.moveTo(X(e[0]),Y(e[1]));cx.lineTo(X(e[2]),Y(e[3]));cx.strokeStyle=c;cx.lineWidth=w;cx.stroke()};
+  cx.lineJoin=cx.lineCap='round';
+  q.E.forEach(e=>seg(e,'rgba(47,125,225,.55)',Math.max(4,z*.2)));   /* 自動で敷く線路 */
+  q.F.forEach(r=>poly(r,ok?'rgba(47,125,225,.16)':'rgba(217,56,47,.1)',col));   /* 駅が占める範囲 */
+  for(const c of q.o)if(c.G)c.G.forEach(r=>poly(r,'rgba(217,56,47,.4)','#d9382f'));else{seg(c.e,'#fff',Math.max(10,z*.55));seg(c.e,'#d9382f',Math.max(6,z*.36))}   /* ぶつかる相手 */
+  cx.beginPath();cx.arc(X(q.x),Y(q.y),Math.max(8,z*.26),0,7);cx.fillStyle=col;cx.fill();cx.strokeStyle='#fff';cx.lineWidth=2;cx.stroke();
+  if(hover){const a=q.o.some(c=>c.e),b=q.o.some(c=>c.G),m=ok?'クリックで駅を設置 (青い線の線路を自動で敷設)':`干渉: 赤い部分が${[a&&'線路',b&&'他の駅'].filter(Boolean).join('・')}とぶつかります`;if(hintEl.textContent!==m)hintEl.textContent=m}}
+function flip(t){if(t.pid!=null){msg('複製した列車は向きを変えられません (親の列車で変更してください)');return}const l=Math.hypot(t.bx-t.ax,t.by-t.ay);[t.ax,t.ay,t.bx,t.by]=[t.bx,t.by,t.ax,t.ay];t.t=l-t.t;t.w=null;save()}
+
+/* ---- ダイヤ: 分岐・折り返しの設定から進路を自動計算する ---- */
+const ST={g:'停車・直進',t:'停車・折り返し',p:'通過'},BN={f:'直進',r:'右へ',l:'左へ'},BO={f:0,r:1,l:7},OF={0:'f',1:'r',7:'l'};
+function go(cf,ax,ay,bx,by){   /* 辺 a→b から b に着いたときの処理 (走行と経路計算で共通) */
+  const di=dirIdx(bx-ax,by-ay),k=bx+','+by,sk=k+'|'+di,al=outs(bx,by,di),sa=(stations.has(k)||pn.has(k))?cf.s[sk]||cf.s[k]||'g':null,turn=sa==='t'||!al.length;
+  let br=null,i=al[0];
+  if(!turn){
+    const key=k+'|'+di,w=(di+BO[cf.b[key]||'f'])%8;
+    if(al.includes(w))i=w;
+    if(al.length>1)br={key,o:al.map(j=>OF[(j-di+8)%8]),c:OF[(i-di+8)%8]};   /* 合流側からの進入は選択肢が無いので対象外 */
+  }
+  return{k,sk,sa,br,turn,nx:turn?[bx,by,ax,ay]:[bx,by,bx+DIRS[i][0],by+DIRS[i][1]]};
+}
+function calcRoute(cf,a){   /* a から現在の設定で進み、同じ辺に戻るまで辿る */
+  const pos=new Map(),st=[],ev=[],rows=[];let lg=0;
+  while(!pos.has(a.join())){
+    pos.set(a.join(),st.length);st.push(a);
+    const r=go(cf,...a),add=(id,o)=>{ev.push({s:st.length-1,id});if(!rows.some(x=>x.id===id))rows.push({id,k:r.k,lg,...o})};
+    if(r.sa)add('s:'+r.sk,{sa:r.sa});
+    if(r.br)add('b:'+r.br.key,{br:r.br});
+    if(r.turn)lg++;a=r.nx;
+  }
+  return{st,ev,rows,pos,tn:lg,loop:pos.get(a.join())};
+}
+/* ---- 時刻: 1マスの走行=SPC秒。clock は 0:00 からの経過秒 ---- */
+const SPC=20,pad=n=>String(n).padStart(2,'0'),hm=t=>{t=Math.floor(t/60)%1440;return pad(Math.floor(t/60))+':'+pad(t%60)},hms=t=>hm(t)+':'+pad(Math.floor(t)%60);
+const ft=s=>{s=Math.round(s);const h=Math.floor(s/3600),m=Math.floor(s%3600/60);return(h?h+'時間':'')+(m?m+'分':'')+(!h&&s%60?s%60+'秒':'')||'0分'};
+function dep(tr,ld,sk,rd){   /* 発車時刻: 設定時刻 (間隔ごとに繰り返し) まで待つ。時刻が無くても間隔があれば前回発車から空ける */
+  const D0=(tr.cf.d||{})[sk],D=D0!=null?D0+(tr.off||0):null,P=tr.iv>0?tr.iv:86400;
+  if(D!=null)return D+Math.ceil((rd-D)/P-1e-9)*P;
+  return tr.iv>0&&ld[sk]!=null?Math.max(rd,ld[sk]+tr.iv):rd;
+}
+function step(dt){
+  const ds=dt*speed*SPC;clock+=ds;
+  for(const tr of trains){
+    tr.ld=tr.ld||{};
+    if(tr.w!=null){if(clock<tr.w)continue;tr.ld[tr.wk]=tr.w;tr.w=null}
+    tr.t+=ds/SPC;
+    for(let g=0;g<8;g++){
+      const len=Math.hypot(tr.bx-tr.ax,tr.by-tr.ay);
+      if(tr.t<len)break;
+      tr.t-=len;
+      const r=go(tr.cf,tr.ax,tr.ay,tr.bx,tr.by);
+      [tr.ax,tr.ay,tr.bx,tr.by]=r.nx;
+      if(r.sa&&r.sa!=='p'){const w=dep(tr,tr.ld,r.sk,clock+(tr.dw??30));if(w>clock){tr.w=w;tr.wk=r.sk;tr.t=0;break}tr.ld[r.sk]=clock}
+    }
+  }
+}
+function eta(tr){   /* 現在位置から経路を先読みし、各項目に着く(発つ)時刻を求める */
+  const o={},ld={...tr.ld},n=R.st.length,at=new Map();let i=R.pos.get(tk(tr).join());
+  if(i==null)return o;
+  R.ev.forEach(e=>at.set(e.s,[...(at.get(e.s)||[]),e.id]));
+  let t=tr.w!=null?tr.w:clock,off=tr.w!=null?0:tr.t;
+  for(let c=0;c<2*n&&Object.keys(o).length<R.rows.length;c++){
+    const a=R.st[i];t+=(Math.hypot(a[2]-a[0],a[3]-a[1])-off)*SPC;off=0;
+    for(const id of at.get(i)||[]){
+      const f=!o[id],r=R.rows.find(x=>x.id===id);if(f)o[id]={a:t};
+      if(r.sa&&r.sa!=='p'){const sk=id.slice(2),d=dep(tr,ld,sk,t+(tr.dw??30));if(f)o[id].d=d;ld[sk]=d;t=d}
+    }
+    i=i+1<n?i+1:R.loop;
+  }
+  return o;
+}
+function dTimes(){   /* 一覧の到着/発車時刻と、1周の所要時間を更新 */
+  [...dlEl.children].forEach((li,i)=>{const r=R.rows[i],q=li.querySelector('.eta');if(!r||!q)return;
+    const e=ET[r.id],s=!e?'':r.sa&&r.sa!=='p'?`着 ${hm(e.a)} → 発 ${hm(e.d)}`:`通過 ${hm(e.a)}`;if(q.textContent!==s)q.textContent=s;
+    const u=li.querySelector('input');if(u&&document.activeElement!==u){const d=dtr.cf.d[r.id.slice(2)],v=d!=null?hm(d+(dtr.off||0)):e&&e.d!=null?hm(e.d):'';if(u.value!==v)u.value=v;u.classList.toggle('df',d==null)}});   /* 未設定の発車時刻は 到着+停車時間 を薄く表示 */
+  let c=0;for(let i=R.loop;i<R.st.length;i++){const a=R.st[i];c+=Math.hypot(a[2]-a[0],a[3]-a[1])*SPC}
+  for(const e of R.ev)if(e.s>=R.loop&&e.id[0]==='s'&&R.rows.find(r=>r.id===e.id).sa!=='p')c+=dtr.dw??30;
+  const v=dtr.iv||0,bad=v>0&&c>v,s=`1周 約${ft(c)}`+(v?` / 間隔 ${ft(v)}`+(bad?' (間隔を超過)':''):'');
+  if(dinfoEl.textContent!==s){dinfoEl.textContent=s;dinfoEl.classList.toggle('bad',bad)}
+}
+
+/* ---- ダイヤグラム (横=時刻 / 縦=駅): 選択列車と、線路でつながる列車の予定 ---- */
+const GCOL=['#2f7de1','#1fa971','#a259d6','#d9382f','#c28a00','#16a2b8','#e0559b','#6b7b8c'],gcol=t=>t===dtr?'#f08c1a':GCOL[(t.id-1)%8];
+function sim(tr,rt,t1){   /* 現在から t1 までの 駅ごとの着・発(通過) を時刻順に先読みする */
+  const o=[],ld={...tr.ld},n=rt.st.length,at=new Map();
+  rt.ev.forEach(e=>{const r=rt.rows.find(x=>x.id===e.id);if(r.sa)at.set(e.s,[...(at.get(e.s)||[]),r])});
+  let i=rt.pos.get(tk(tr).join()),t=clock,off=tr.t;
+  if(tr.w!=null){if(tr.wk)o.push({k:ck(tr.wk.split('|')[0]),a:clock,d:tr.w});t=tr.w;off=0}
+  for(let c=0;t<t1&&c<30000;c++){
+    const a=rt.st[i];t+=(Math.hypot(a[2]-a[0],a[3]-a[1])-off)*SPC;off=0;
+    for(const r of at.get(i)||[]){const e={k:ck(r.k),a:t,d:t};
+      if(r.sa!=='p'){const sk=r.id.slice(2),d=dep(tr,ld,sk,t+(tr.dw??30));ld[sk]=d;t=d;e.d=d}
+      o.push(e)}
+    i=i+1<n?i+1:rt.loop;
+  }
+  return o;
+}
+function dTrain(){const h=trains.map(t=>opt(''+t.id,'列車'+t.id+(t.pid!=null?` (列車${t.pid}の${Math.round((t.off||0)/60)}分後)`:''),''+dtr.id)).join('');if(h!==tHtml)dtrEl.innerHTML=tHtml=h}
+function gDraw(){
+  if(performance.now()-gT<200)return;gT=performance.now();
+  const w=gcv.clientWidth,h=gcv.clientHeight;if(!w||!h)return;
+  if(!gC||gC.v!==ver||gC.t!==dtr){   /* 選択列車と線路でつながる列車を集める */
+    const sn=new Set([dtr.ax+','+dtr.ay]),q=[[dtr.ax,dtr.ay]];
+    while(q.length){const[x,y]=q.pop();for(const d of DIRS){const nx=x+d[0],ny=y+d[1],k=nx+','+ny;if(!sn.has(k)&&has(x,y,nx,ny)){sn.add(k);q.push([nx,ny])}}}
+    gC={v:ver,t:dtr,tr:[dtr,...trains.filter(t=>t!==dtr&&sn.has(t.ax+','+t.ay))]}}
+  const t0=clock,sp=+gspanEl.value,t1=t0+sp,L=gC.tr.map(t=>{const rt=calcRoute(t.cf,tk(t));return{t,rt,ev:sim(t,rt,t1)}}),ord=[];
+  for(const{rt}of L){let p=-1;for(const r of rt.rows)if(r.sa){let j=ord.indexOf(ck(r.k));if(j<0){j=p<0?ord.length:p+1;ord.splice(j,0,ck(r.k))}p=j}}
+  if(gcv.width!==Math.round(w*dpr)||gcv.height!==Math.round(h*dpr)){gcv.width=Math.round(w*dpr);gcv.height=Math.round(h*dpr)}
+  const g=gcv.getContext('2d'),ML=74,MR=18,MT=20,MB=8,pw=w-ML-MR,ph=h-MT-MB,X=t=>ML+(t-t0)/sp*pw,
+    Y=new Map(ord.map((k,i)=>[k,MT+(ord.length>1?i*ph/(ord.length-1):ph/2)])),stp=sp<=1800?300:sp<=3600?600:sp<=7200?1200:1800;
+  g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);g.font='11px system-ui,sans-serif';g.textBaseline='middle';g.lineWidth=1;g.textAlign='center';
+  if(!ord.length){g.fillStyle='#6b7b8c';g.fillText('駅を置き、列車が停車・通過すると表示されます',w/2,h/2)}
+  for(let tt=Math.ceil(t0/stp)*stp;tt<=t1;tt+=stp){const x=X(tt);g.beginPath();g.moveTo(x,MT-4);g.lineTo(x,MT+ph);g.strokeStyle='#e3ebf3';g.stroke();g.fillStyle='#6b7b8c';g.fillText(hm(tt),x,8)}
+  g.textAlign='right';
+  for(const[k,y]of Y){g.beginPath();g.moveTo(ML,y);g.lineTo(ML+pw,y);g.strokeStyle='#cfdbe7';g.stroke();g.fillStyle='#2b3a4a';g.fillText(stations.get(k)||'',ML-6,y,ML-10)}
+  g.save();g.beginPath();g.rect(ML,MT-4,pw,ph+8);g.clip();g.lineJoin='round';g.textAlign='left';
+  for(const{t,ev}of[...L].reverse()){
+    if(!ev.length)continue;g.beginPath();
+    ev.forEach((e,i)=>{const y=Y.get(e.k);i?g.lineTo(X(e.a),y):g.moveTo(X(e.a),y);if(e.d>e.a)g.lineTo(X(e.d),y)});
+    g.strokeStyle=g.fillStyle=gcol(t);g.lineWidth=t===dtr?3:1.6;g.stroke();g.fillText(t.id,X(ev[0].a)+3,Y.get(ev[0].k)-8)}
+  g.restore();
+  const lg=L.map(({t})=>`<button data-id="${t.id}"${t===dtr?' class="on"':''}><i class="chip" style="background:${gcol(t)}"></i>列車${t.id}</button>`).join('');
+  if(lg!==gLg)glgEl.innerHTML=gLg=lg;
+}
+function dopen(){   /* ダイヤ設定を開閉。選択中の列車、無ければ先頭の列車 */
+  if(dtr)return closeDia();
+  const t=sel&&sel.type==='train'?sel.t:trains[0];
+  if(!t){hintEl.textContent='ダイヤを設定する列車がありません。「列車」ツールで線路上に置いてください';return}
+  sel={type:'train',t};openDia(t);
+}
+const setTab=t=>{tab=t;diaEl.querySelectorAll('.st').forEach(e=>e.hidden=t!=='set');gvEl.hidden=t!=='gr';diaEl.classList.toggle('wide',t==='gr');tsetEl.classList.toggle('on',t==='set');tgrEl.classList.toggle('on',t==='gr');gT=0};
+
+/* ---- ダイヤ編集ダイアログ ---- */
+const diaEl=document.getElementById('dia'),dlEl=document.getElementById('dlist'),dwEl=document.getElementById('dw'),dhEl=document.getElementById('dh'),dmEl=document.getElementById('dm'),dinfoEl=document.getElementById('dinfo'),clkEl=document.getElementById('clk'),dtrEl=document.getElementById('dtrain'),gvEl=document.getElementById('gv'),gcv=document.getElementById('gcv'),glgEl=document.getElementById('glg'),gspanEl=document.getElementById('gspan'),tsetEl=document.getElementById('tset'),tgrEl=document.getElementById('tgr'),dopenEl=document.getElementById('dopen');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>'&#'+c.charCodeAt(0)+';'),opt=(v,l,s)=>`<option value="${esc(v)}"${v===s?' selected':''}>${esc(l)}</option>`;
+const tk=t=>[t.ax,t.ay,t.bx,t.by];
+const KC={g:'#2f7de1',t:'#8e44ad',p:'#7b8794',b:'#d6336c'},AR=['→','↘','↓','↙','←','↖','↑','↗'],SH={g:'停車',t:'折返',p:'通過'},mapEl=document.getElementById('map'),rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
+let selRow=null,dHtml='',fitP=false,camT=null,fkT=0,ET={},clock=21600,tab='set',gT=0,gC=null,gLg='',tHtml='';
+function markRows(){[...dlEl.children].forEach((li,i)=>{const r=R.rows[i];if(!r)return;li.classList.toggle('sel',r.id===selRow);li.classList.toggle('set',r.sa?r.sa!=='g'||dtr.cf.d[r.id.slice(2)]!=null:r.br.c!=='f')})}
+function dRender(){   /* 経路順に 駅・分岐 の設定を並べる (内容が同じなら作り直さない) */
+  const h=R.rows.map((r,i)=>{
+    const o=r.sa?Object.entries(ST).map(([v,l])=>opt(v,l,r.sa)):r.br.o.map(v=>opt(v,BN[v]+dl(r.br.key,v),r.br.c)),
+      n=r.sa?esc(sname(r.k))+sp(r.k)+(R.tn?` <small>(${r.lg%2?'復路':'往路'})</small>`:''):'分岐 '+AR[+r.br.key.split('|')[1]]+' <small>('+r.k.replace(',',', ')+')</small>';
+    return`<li class="k${r.sa||'b'}" data-id="${esc(r.id)}" data-k="${r.k}"><i class="no">${i+1}</i><span class="nm">${n}<b class="tg">設定済</b></span><select aria-label="${r.sa?'停車の設定':'進む方向'}">${o.join('')}</select><div class="sub"><span class="eta"></span>${r.sa&&r.sa!=='p'?'<label>発車<input type="time" aria-label="発車時刻"></label><button class="cl" title="発車時刻を解除" aria-label="発車時刻を解除">×</button>':''}</div></li>`}).join('')||'<li class="empty">設定できる駅・分岐がありません</li>';
+  if(h===dHtml)return;
+  const f=document.activeElement,li=f&&dlEl.contains(f)?f.closest('li'):null,id=li&&li.dataset.id,y=dlEl.scrollTop;
+  dlEl.innerHTML=dHtml=h;dlEl.scrollTop=y;curN=-2;
+  if(id){const q=dlEl.querySelector(`li[data-id="${id}"] select`);if(q)q.focus()}   /* 操作中の項目のフォーカスを保つ */
+}
+function openDia(t){dtr=t;t.dw=t.dw??30;t.iv=t.iv||0;t.cf.d=t.cf.d||{};dwEl.value=t.dw;dhEl.value=Math.floor(t.iv/3600);dmEl.value=Math.floor(t.iv%3600/60);anc=R=null;ET={};dHtml='';selRow=null;fitP=true;diaEl.hidden=false}
+const closeDia=()=>{dtr=fk=R=null;ET={};dHtml='';selRow=null;diaEl.hidden=true;if(sel&&sel.type==='train')sel=null};
+function fitRoute(){   /* 経路全体が、パネルに隠れない地図の範囲に収まるよう表示を合わせる */
+  if(!R)return;
+  let a=1e9,b=1e9,c=-1e9,d=-1e9;
+  for(const s of R.st)for(const i of[0,2]){a=Math.min(a,s[i]);c=Math.max(c,s[i]);b=Math.min(b,s[i+1]);d=Math.max(d,s[i+1])}
+  const r=mapEl.getBoundingClientRect(),m=56,z=Math.min(70,Math.max(5,Math.min((r.width-2*m)/Math.max(4,c-a),(r.height-2*m)/Math.max(4,d-b))));
+  camT={z,x:(a+c)/2-(r.left+r.width/2-W/2)/z,y:(b+d)/2-(r.top+r.height/2-H/2)/z};
+}
+function panTo(k){   /* 設定中の項目を、パネルに隠れない地図の中央へ (拡大が小さすぎるときは読める大きさまで寄る) */
+  const[x,y]=k.split(',').map(Number),r=mapEl.getBoundingClientRect(),z=Math.max(cam.z,24);
+  camT={z,x:x-(r.left+r.width/2-W/2)/z,y:y-(r.top+r.height/2-H/2)/z};
+}
+function camStep(){const g=v3&&!dtr?1:0;k3=Math.abs(g-k3)<.003?g:k3+(g-k3)*(rm?1:.14);   /* ダイヤ編集中は平面表示に戻す */   /* 毎フレーム: 選択中の列車にダイヤを追従 / 選択パネルの重なり回避 / 視点の滑らかな移動 */
+  if(dtr&&sel&&sel.type==='train'&&sel.t!==dtr)openDia(sel.t);
+  selEl.hidden=!sel||!!(dtr&&sel.type==='train'&&sel.t===dtr);
+  if(fk&&coarse&&performance.now()-fkT>2500)fk=selK();
+  if(!camT)return;
+  const f=rm?1:.2;cam.x+=(camT.x-cam.x)*f;cam.y+=(camT.y-cam.y)*f;cam.z+=(camT.z-cam.z)*f;
+  if(Math.abs(camT.x-cam.x)+Math.abs(camT.y-cam.y)<.01&&Math.abs(camT.z-cam.z)<.05){Object.assign(cam,camT);camT=null}
+}
+function dSync(){   /* 毎フレーム: 設定や線路が変わったら進路を再計算し、次の項目を強調 */
+  if(!dtr)return;
+  if(!trains.includes(dtr))return closeDia();
+  const k=tk(dtr).join(),calc=a=>{R=calcRoute(dtr.cf,a);R.v=ver;dRender()};
+  if(!R||R.v!==ver)calc(anc=anc||tk(dtr));
+  let p=R.pos.get(k);
+  if(p===undefined||(R.loop>0&&p>=R.loop)){calc(anc=tk(dtr));p=0}   /* 経路から外れた/周回に入ったら現在位置から取り直す */
+  if(fitP){fitP=false;fitRoute()}
+  ET=eta(dtr);dTimes();markRows();dTrain();dLock();if(tab==='gr')gDraw();
+  const e=R.ev.find(e=>e.s>=p)||R.ev.find(e=>e.s>=R.loop),c=e?R.rows.findIndex(r=>r.id===e.id):-1;
+  if(c!==curN){curN=c;[...dlEl.children].forEach((li,i)=>li.classList.toggle('cur',i===c));
+    const li=dlEl.children[c];if(li){const a=li.offsetTop,b=a+li.offsetHeight;if(a<dlEl.scrollTop)dlEl.scrollTop=a-4;else if(b>dlEl.scrollTop+dlEl.clientHeight)dlEl.scrollTop=b-dlEl.clientHeight+4}}
+}
+dlEl.onchange=e=>{const li=e.target.closest('li[data-id]');if(!li||!dtr)return;const[t,k]=li.dataset.id.split(':');
+  if(e.target.type==='time'){const v=e.target.value.split(':');if(v.length<2)delete dtr.cf.d[k];else dtr.cf.d[k]=v[0]*3600+v[1]*60}else dtr.cf[t][k]=e.target.value;save()};
+const hf=e=>{const li=e.target.closest('li[data-k]');fk=li?li.dataset.k:null;fkT=performance.now()};
+const selK=()=>{const r=R&&R.rows.find(r=>r.id===selRow);return r?r.k:null};
+dlEl.addEventListener('mouseover',hf);dlEl.addEventListener('focusin',e=>{hf(e);const li=e.target.closest('li[data-id]');if(li){selRow=li.dataset.id;panTo(li.dataset.k)}});dlEl.onmouseleave=()=>{fk=selK()};
+dlEl.addEventListener('click',e=>{const li=e.target.closest('li[data-k]');if(!li)return;selRow=li.dataset.id;
+  if(e.target.closest('.cl')){delete dtr.cf.d[li.dataset.id.slice(2)];li.querySelector('input').value='';save();return}
+  if(!/^(SELECT|INPUT|LABEL)$/.test(e.target.tagName)){fk=li.dataset.k;fkT=performance.now();panTo(fk)}});
+dwEl.oninput=()=>{dtr.dw=Math.max(0,Math.min(600,+dwEl.value||0));save()};
+dhEl.oninput=dmEl.oninput=()=>{dtr.iv=Math.max(0,(+dhEl.value||0)*3600+(+dmEl.value||0)*60);save()};
+document.getElementById('dx').onclick=closeDia;
+dopenEl.onclick=dopen;tsetEl.onclick=()=>setTab('set');tgrEl.onclick=()=>setTab('gr');gspanEl.onchange=()=>{gT=0};
+dtrEl.onchange=()=>{const t=trains.find(t=>''+t.id===dtrEl.value);if(t)sel={type:'train',t}};
+glgEl.onclick=e=>{const b=e.target.closest('button'),t=b&&trains.find(t=>''+t.id===b.dataset.id);if(t)sel={type:'train',t}};
+setTab('set');
+document.getElementById('dflip').onclick=()=>flip(dtr);
+document.getElementById('dfit').onclick=fitRoute;
+/* ---- ダイヤの複製: 子は親の設定(cf・停車時間・間隔)を共有し、親の off 秒後に同じ経路を走る ---- */
+function link(t,p){t.pid=p.id;t.cf=p.cf;t._p=p;for(const k of['dw','iv'])Object.defineProperty(t,k,{get:()=>p[k],set(){},enumerable:true,configurable:true})}
+function relink(){for(const t of trains)if(t.pid!=null){const p=trains.find(q=>q.id===t.pid&&q!==t);
+  if(p){if(t._p!==p)link(t,p)}
+  else{const d=t.dw,v=t.iv;t.cf=JSON.parse(JSON.stringify(t.cf));t.cf.d=t.cf.d||{};for(const k in t.cf.d)t.cf.d[k]+=t.off||0;   /* 親が無くなったら独立した列車にする */
+    Object.defineProperties(t,{dw:{value:d,writable:true,enumerable:true,configurable:true},iv:{value:v,writable:true,enumerable:true,configurable:true}});delete t.pid;delete t._p;t.off=0;save()}}}
+function cloneTrain(p,m){const r=p.pid!=null?trains.find(q=>q.id===p.pid)||p:p,off=(r===p?0:p.off||0)+m*60;snap();
+  const t={id:++tid,ax:r.ax,ay:r.ay,bx:r.bx,by:r.by,t:0,off,ld:{},cf:r.cf,wk:''};
+  t.w=r.w!=null?r.w+off:clock+off-r.t*SPC;if(r.w!=null)t.wk=r.wk;link(t,r);trains.push(t);save();return t}
+const dcmEl=document.getElementById('dcm'),dparEl=document.getElementById('dpar'),dflipEl=document.getElementById('dflip');
+document.getElementById('dclone').onclick=()=>{if(!dtr)return;const m=Math.max(1,Math.min(1439,Math.round(+dcmEl.value||0)));sel={type:'train',t:cloneTrain(dtr,m)}};
+function dLock(){const c=dtr.pid!=null;for(const e of[dwEl,dhEl,dmEl,dflipEl])e.disabled=c;
+  dlEl.querySelectorAll('select,input,.cl').forEach(e=>{if(e.disabled!==c)e.disabled=c});
+  const s=c&&tab==='set'?`列車${dtr.pid}の${Math.round((dtr.off||0)/60)}分後に同じ経路を走ります。設定は親の列車に従うため、ここでは変更できません`:'';
+  dparEl.hidden=!s;if(dparEl.textContent!==s)dparEl.textContent=s}
+
+/* ---- 互換: roundRect 非対応ブラウザ用 (無いと毎フレーム例外で描画が止まる) ---- */
+if(!CanvasRenderingContext2D.prototype.roundRect)CanvasRenderingContext2D.prototype.roundRect=function(x,y,w,h,r){r=Math.max(0,Math.min(+r||0,Math.abs(w)/2,Math.abs(h)/2));this.moveTo(x+r,y);this.arcTo(x+w,y,x+w,y+h,r);this.arcTo(x+w,y+h,x,y+h,r);this.arcTo(x,y+h,x,y,r);this.arcTo(x,y,x+w,y,r);this.closePath()};
+/* ---- 保存の取りこぼし防止 / 例外の封じ込め ---- */
+addEventListener('pagehide',()=>{if(svT){clearTimeout(svT);flush()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&svT){clearTimeout(svT);flush()}});
+let errN=0;
+function sanitize(){for(let i=trains.length-1;i>=0;i--){const t=trains[i];if(![t.ax,t.ay,t.bx,t.by,t.t].every(Number.isFinite)||!has(t.ax,t.ay,t.bx,t.by)||!t.cf||!t.cf.s||!t.cf.b||!t.cf.d)trains.splice(i,1)}}
+function fail(e){if(errN++<5)console.error(e);sanitize();if(errN===1)msg('内部エラーを検出しました。続く場合は再読み込みしてください')}
+/* ---- WebGL: 背景の格子点と線路をGPUで描く。線路の頂点は線路が変わった時だけ作り直す。非対応・失敗時は従来の2D描画へ自動で戻る ---- */
+const glc=document.getElementById('gl'),hx=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255),CB=hx('#e4ddd0'),CS=hx('#b99d7c'),CR=hx('#5d6a79'),
+PH='#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n',
+VQ='attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}',
+FQ=PH+'uniform vec4 u;uniform vec3 k;uniform vec2 r;uniform vec2 m;void main(){vec2 s=vec2(gl_FragCoord.x,m.y-gl_FragCoord.y)/m.x-r*.5;vec2 v=vec2(s.x,s.y/k.z);vec2 w=vec2(k.x*v.x+k.y*v.y,k.x*v.y-k.y*v.x)/u.z+u.xy;vec2 g=floor(w/u.w+.5)*u.w;vec2 d=(w-g)*u.z;bool M=mod(g.x,5.)<.01&&mod(g.y,5.)<.01;float q=M?2.:1.4;float al=clamp(q+.5-max(abs(d.x),abs(d.y)),0.,1.);vec3 c=M?vec3(.663,.733,.8):vec3(.804,.851,.898);gl_FragColor=vec4(c*al,al);}',
+VE='attribute vec2 p;attribute vec2 t;attribute vec3 e;uniform vec4 u;uniform vec3 k;uniform vec2 r;uniform vec3 w;varying float a;void main(){vec2 q=(p-u.xy)*u.z+t*e.y*w.z+vec2(-t.y,t.x)*(e.z*w.x+w.y);a=e.x;gl_Position=vec4((k.x*q.x-k.y*q.y)/r.x*2.,-(k.z*(k.y*q.x+k.x*q.y))/r.y*2.,0.,1.);}',
+FE=PH+'uniform vec3 c;uniform float d;varying float a;void main(){if(d>.5&&mod(a,.23)>.07)discard;gl_FragColor=vec4(c,1.);}';
+let G=null,GQ,GE,gn=0,gver=-1;
+function glProg(v,f){const mk=(t,s)=>{const o=G.createShader(t);G.shaderSource(o,s);G.compileShader(o);if(!G.getShaderParameter(o,G.COMPILE_STATUS))throw new Error(G.getShaderInfoLog(o));return o},p=G.createProgram();G.attachShader(p,mk(G.VERTEX_SHADER,v));G.attachShader(p,mk(G.FRAGMENT_SHADER,f));G.linkProgram(p);if(!G.getProgramParameter(p,G.LINK_STATUS))throw new Error(G.getProgramInfoLog(p));p.b=G.createBuffer();return p}
+function glInit(){try{G=glc.getContext('webgl',{alpha:false,antialias:true,failIfMajorPerformanceCaveat:true});if(!G)return;
+  GQ=glProg(VQ,FQ);GE=glProg(VE,FE);G.bindBuffer(G.ARRAY_BUFFER,GQ.b);G.bufferData(G.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),G.STATIC_DRAW);
+  G.enable(G.BLEND);G.blendFunc(G.ONE,G.ONE_MINUS_SRC_ALPHA);gver=-1}catch(err){console.warn('WebGLを使えないため2D描画で動作します:',err);G=null}}
+glc.addEventListener('webglcontextlost',e=>{e.preventDefault();G=null});glc.addEventListener('webglcontextrestored',glInit);glInit();
+function glBuild(){   /* 線路1本 = 6頂点 [位置2, 向き2, 辺に沿った距離/端の向き/左右] */
+  const a=new Float32Array(edges.size*42),V=[[0,-1],[0,1],[1,1],[0,-1],[1,1],[1,-1]];let i=0;
+  for(const e of edges.values()){const dx=e[2]-e[0],dy=e[3]-e[1],l=Math.hypot(dx,dy),tx=dx/l,ty=dy/l;
+    for(const[f,s]of V){a[i]=f?e[2]:e[0];a[i+1]=f?e[3]:e[1];a[i+2]=tx;a[i+3]=ty;a[i+4]=f?l:0;a[i+5]=f?1:-1;a[i+6]=s;i+=7}}
+  G.bindBuffer(G.ARRAY_BUFFER,GE.b);G.bufferData(G.ARRAY_BUFFER,a,G.STATIC_DRAW);gn=edges.size*6;gver=ver}
+function glDraw(){   /* 成功したら true (背景・格子点・線路は描画済み) */
+  if(!G||!W||!H)return false;
+  try{
+    const z=cam.z,{s,c,y:q}=lin(),U=(p,n)=>(p.U=p.U||{})[n]||(p.U[n]=G.getUniformLocation(p,n)),A=(p,n,sz,st,o)=>{const l=G.getAttribLocation(p,n);G.enableVertexAttribArray(l);G.vertexAttribPointer(l,sz,G.FLOAT,false,st,o)};
+    G.viewport(0,0,glc.width,glc.height);G.clearColor(.953,.969,.984,1);G.clear(G.COLOR_BUFFER_BIT);
+    G.useProgram(GQ);G.bindBuffer(G.ARRAY_BUFFER,GQ.b);A(GQ,'a',2,0,0);
+    G.uniform4f(U(GQ,'u'),cam.x,cam.y,z,z>=14?1:z>=7?5:10);G.uniform3f(U(GQ,'k'),c,s,q);G.uniform2f(U(GQ,'r'),W,H);G.uniform2f(U(GQ,'m'),glc.width/W,glc.height);
+    G.drawArrays(G.TRIANGLE_STRIP,0,4);
+    if(gver!==ver)glBuild();
+    if(gn){
+      G.useProgram(GE);G.bindBuffer(G.ARRAY_BUFFER,GE.b);A(GE,'p',2,28,0);A(GE,'t',2,28,8);A(GE,'e',3,28,16);
+      G.uniform4f(U(GE,'u'),cam.x,cam.y,z,0);G.uniform3f(U(GE,'k'),c,s,q);G.uniform2f(U(GE,'r'),W,H);
+      const L=(col,hw,off,ext,dash)=>{G.uniform3f(U(GE,'w'),hw,off,ext);G.uniform3fv(U(GE,'c'),col);G.uniform1f(U(GE,'d'),dash);G.drawArrays(G.TRIANGLES,0,gn)};
+      if(z>=12){const h=z*SZ.bed/2,r=Math.max(.6,z*.025);L(CB,h,0,h,0);L(CS,z*SZ.slp/2,0,0,1);L(CR,r,z*.09,r,0);L(CR,r,-z*.09,r,0)}
+      else{const h=Math.max(.75,z*.05);L(CR,h,0,h,0)}
+    }
+    return true;
+  }catch(err){console.warn(err);G=null;return false}
+}
+
+/* ---- 描画 ---- */
+function draw(){
+  const z=cam.z,X=v=>(v-cam.x)*z+W/2,Y=v=>(v-cam.y)*z+H/2;
+  cx.setTransform(dpr,0,0,dpr,0,0);const gl=glDraw();if(gl)cx.clearRect(0,0,W,H);else{cx.fillStyle='#f3f7fb';cx.fillRect(0,0,W,H)}
+  const{s:ls,c:lc,y:lq}=lin(),H3=z*Math.sqrt(Math.max(0,1-lq*lq)),UPx=-ls/lq,UPy=-lc/lq,T=(a,b)=>[W/2+lc*(a-W/2)-ls*(b-H/2),H/2+lq*(ls*(a-W/2)+lc*(b-H/2))];
+  cx.save();cx.translate(W/2,H/2);cx.transform(lc,lq*ls,-ls,lq*lc,0,0);cx.translate(-W/2,-H/2);   /* 地面を回転+縦圧縮して斜めから見る */
+  const cn=[[0,0],[W,0],[0,H],[W,H]].map(p=>s2w(p[0],p[1])),xs=cn.map(p=>p.x),ys=cn.map(p=>p.y),x0=Math.floor(Math.min(...xs))-1,x1=Math.ceil(Math.max(...xs))+1,y0=Math.floor(Math.min(...ys))-1,y1=Math.ceil(Math.max(...ys))+1;
+  const gs=z>=14?1:z>=7?5:10;
+  if(!gl)for(let gx=Math.ceil(x0/gs)*gs;gx<=x1;gx+=gs)for(let gy=Math.ceil(y0/gs)*gs;gy<=y1;gy+=gs){
+    const M=gx%5===0&&gy%5===0,r=M?2:1.4;cx.fillStyle=M?'#a9bbcc':'#cdd9e5';cx.fillRect(X(gx)-r,Y(gy)-r,r*2,r*2)}
+  const vis=[];
+  if(!gl)for(const e of edges.values())if(Math.max(e[0],e[2])>=x0&&Math.min(e[0],e[2])<=x1&&Math.max(e[1],e[3])>=y0&&Math.min(e[1],e[3])<=y1)vis.push(e);
+  const path=off=>{cx.beginPath();for(const e of vis){
+    const ax=X(e[0]),ay=Y(e[1]),bx=X(e[2]),by=Y(e[3]);
+    if(off){const l=Math.hypot(bx-ax,by-ay),nx=-(by-ay)/l*off,ny=(bx-ax)/l*off;cx.moveTo(ax+nx,ay+ny);cx.lineTo(bx+nx,by+ny);cx.moveTo(ax-nx,ay-ny);cx.lineTo(bx-nx,by-ny)}
+    else{cx.moveTo(ax,ay);cx.lineTo(bx,by)}}};
+  cx.lineCap='round';cx.lineJoin='round';
+  if(sel&&sel.type==='edges'){cx.beginPath();for(const k of sel.keys){const e=edges.get(k);if(e){cx.moveTo(X(e[0]),Y(e[1]));cx.lineTo(X(e[2]),Y(e[3]))}}cx.strokeStyle='rgba(47,125,225,.3)';cx.lineWidth=Math.max(10,z*.85);cx.stroke()}
+  if(gl);else if(z>=12){
+    path(0);cx.strokeStyle='#e4ddd0';cx.lineWidth=z*SZ.bed;cx.stroke();
+    path(0);cx.lineCap='butt';cx.setLineDash([z*.07,z*.16]);cx.strokeStyle='#b99d7c';cx.lineWidth=z*SZ.slp;cx.stroke();cx.setLineDash([]);cx.lineCap='round';
+    path(z*.09);cx.strokeStyle='#5d6a79';cx.lineWidth=Math.max(1.2,z*.05);cx.stroke();
+  }else{path(0);cx.strokeStyle='#5d6a79';cx.lineWidth=Math.max(1.5,z*.1);cx.stroke()}
+  if(dtr&&R){   /* ダイヤ編集中: 地図を薄くし、進路を進行方向の右側に太く重ねて矢印で向きを示す */
+    cx.fillStyle='rgba(243,247,251,.55)';cx.fillRect(0,0,W,H);
+    const o=z*.17,lw=Math.max(4,z*.16),U=R.st.map(a=>{const l=Math.hypot(a[2]-a[0],a[3]-a[1]);return[(a[2]-a[0])/l,(a[3]-a[1])/l,a]});
+    cx.beginPath();
+    for(const[ux,uy,a]of U){cx.moveTo(X(a[0])-uy*o,Y(a[1])+ux*o);cx.lineTo(X(a[2])-uy*o,Y(a[3])+ux*o)}
+    cx.strokeStyle='#fff';cx.lineWidth=lw+4;cx.stroke();cx.strokeStyle='#f08c1a';cx.lineWidth=lw;cx.stroke();
+    if(z>=9){const s=Math.max(2.5,z*.09);cx.beginPath();
+      for(const[ux,uy,a]of U){const mx=X((a[0]+a[2])/2)-uy*o,my=Y((a[1]+a[3])/2)+ux*o;
+        cx.moveTo(mx-ux*s-uy*s,my-uy*s+ux*s);cx.lineTo(mx+ux*s,my+uy*s);cx.lineTo(mx-ux*s+uy*s,my-uy*s-ux*s)}
+      cx.strokeStyle='#fff';cx.lineWidth=Math.max(1.5,z*.05);cx.stroke()}
+    cx.beginPath();   /* 選ばれていない分岐の先は点線で示す */
+    for(const r of R.rows)if(r.br){const[nx,ny]=r.k.split(',').map(Number),di=+r.br.key.split('|')[1];
+      for(const v of r.br.o)if(v!==r.br.c){const d=DIRS[(di+BO[v])%8];cx.moveTo(X(nx),Y(ny));cx.lineTo(X(nx+d[0]*.8),Y(ny+d[1]*.8))}}
+    cx.setLineDash([4,4]);cx.strokeStyle='#8a99a8';cx.lineWidth=3;cx.stroke();cx.setLineDash([]);
+  }
+  /* 分岐点 */
+  for(const[k,d]of deg){
+    if(d<3)continue;const[nx,ny]=k.split(',').map(Number);if(nx<x0||nx>x1||ny<y0||ny>y1)continue;
+    cx.beginPath();cx.arc(X(nx),Y(ny),z*.17,0,7);cx.fillStyle='#fff';cx.fill();cx.strokeStyle='#2f7de1';cx.lineWidth=2;cx.stroke();
+  }
+  /* 駅: 番線ぶんのホーム・屋根・駅舎・跨線橋 (3D表示では積層して立体にする) */
+  const rr=(a,b,c,d,r)=>{cx.beginPath();cx.roundRect(a,b,c,d,r)};
+  for(const[k,name]of stations){
+    const[sx,sy]=xy(k);if(sx<x0-5||sx>x1+5||sy<y0-5||sy>y1+5)continue;
+    /* 寸法は向きによらず共通: 寸法は SZ に集約 (ホーム幅・長さ・駅舎の奥行き) / 駅舎の長さ=ホームの長さ / 線路の脇を空けるので隣の線路にかからない */
+    const[n,di,bs,sd]=pget(k),D=DIRS[di],P=DIRS[(di+2)%8],g=2*Math.hypot(...P)*z,an=Math.atan2(D[1],D[0]),px=X(sx),py=Y(sy),sg=-bs,
+      tw=z*SZ.tw,PW=z*SZ.pw,Lp=z*SZ.pl,BD=z*SZ.bd,yN=-(tw+PW+z*.3),yF=yN-BD,h1=H3*.95,h2=H3*1.65,hp=H3*.18,hr=H3*.88,pv=[],th=Math.atan2(ls,lc),vF=sg*Math.cos(an+th)>0,vX=Math.sin(an+th)>0,UX=UPx*Math.cos(an)+UPy*Math.sin(an),UY=sg*(UPy*Math.cos(an)-UPx*Math.sin(an)),
+      F=(u,f)=>{cx.save();cx.translate(px+UPx*u,py+UPy*u);cx.rotate(an);cx.scale(1,sg);f();cx.restore()},
+      box=(x,y,w,h,u0,u1,sc,tc)=>{const m=u1-u0>1?Math.ceil((u1-u0)/3):0;for(let i=0;i<m;i++)F(u0+(u1-u0)*i/m,()=>{cx.fillStyle=sc;cx.fillRect(x,y,w,h)});F(u1,()=>{cx.fillStyle=tc;cx.fillRect(x,y,w,h)})};
+    pv.push(...prects(sd,bs,g,tw,PW));   /* 各番線の駅舎側/反対側のホーム */
+    F(0,()=>{cx.fillStyle='rgba(30,50,70,.16)';for(const[a,b]of pv)cx.fillRect(-Lp+2,a+3,Lp*2,b-a)});
+    for(const[a,b,s]of pv){box(-Lp,a,Lp*2,b-a,0,hp,'#aab6c3','#dfe5ec');F(hp,()=>{cx.fillStyle='#f2c230';if(s!==1)cx.fillRect(-Lp,a,Lp*2,z*.07);if(s!==0)cx.fillRect(-Lp,b-z*.07,Lp*2,z*.07)})}
+    for(const[a,b]of pv){const cl=Lp*.78;
+      for(const u of[-1,1])for(const v of[a+z*.05,b-z*.15])box(u*cl-z*.05,v,z*.1,z*.1,0,hr,'#51647a','#51647a');
+      F(hr,()=>{rr(-cl-z*.1,a+z*.02,cl*2+z*.2,b-a-z*.04,z*.05);cx.fillStyle='rgba(235,244,252,.62)';cx.fill();cx.strokeStyle='#6f8aa6';cx.lineWidth=1.5;cx.stroke();
+        cx.beginPath();for(let q=-cl;q<=cl;q+=z*.5){cx.moveTo(q,a+z*.04);cx.lineTo(q,b-z*.04)}cx.strokeStyle='rgba(111,138,166,.5)';cx.lineWidth=1;cx.stroke()})}
+    /* 設定中の番線のホームを青い破線で囲む */
+    if(sel&&sel.type==='sta'&&sel.k===k)for(const[a,b,,i,j]of pv)if(i===psel||j===psel)F(hp,()=>{rr(-Lp-3,a-3,Lp*2+6,b-a+6,5);cx.save();cx.setLineDash([6,4]);cx.strokeStyle='#2f7de1';cx.lineWidth=2.5;cx.stroke();cx.restore()});
+    /* 駅舎: 2階建て (1m≒H3/6)。1F=ガラス張りの吹き抜けロビー(約5.7m) / 2F=白い箱を街側へ張り出して玄関の庇にし、連続窓+看板帯 / 薄い屋根スラブ+屋上設備 (全高約9.9m)。跨線橋は2Fの床へつながる */
+    const G1=yF+z*.35,x2=-Lp*.55,T2=h2-h1,fy1=vF?yN:G1,fy2=vF?yN:yF,ex1=vX?Lp:-Lp,ex2=vX?Lp:x2,w0=h1+T2*.14,w1=h1+T2*.62,gl='#4d7899',
+      Q=(p,q,u0,u1,c)=>F(0,()=>{cx.beginPath();cx.moveTo(p[0]+UX*u0,p[1]+UY*u0);cx.lineTo(q[0]+UX*u0,q[1]+UY*u0);cx.lineTo(q[0]+UX*u1,q[1]+UY*u1);cx.lineTo(p[0]+UX*u1,p[1]+UY*u1);cx.closePath();cx.fillStyle=c;cx.fill()}),
+      ML=(xa,xb,y,u0,u1,st,c)=>F(0,()=>{cx.beginPath();for(let q=xa+st;q<xb-1;q+=st){cx.moveTo(q+UX*u0,y+UY*u0);cx.lineTo(q+UX*u1,y+UY*u1)}cx.strokeStyle=c;cx.lineWidth=1.2;cx.stroke()});
+    F(0,()=>{cx.fillStyle='rgba(30,50,70,.2)';cx.fillRect(-Lp+3,yF+3,Lp*2,BD)});
+    box(-Lp,G1,Lp*2,yN-G1,0,h1,'#9fc0d8','#e9eef3');
+    Q([-Lp+z*.12,fy1],[Lp-z*.12,fy1],H3*.04,h1-H3*.05,gl);Q([ex1,G1+z*.12],[ex1,yN-z*.12],H3*.04,h1-H3*.05,gl);
+    ML(-Lp+z*.12,Lp-z*.12,fy1,H3*.04,h1-H3*.05,z*.5,'rgba(225,240,250,.5)');
+    if(!vF)Q([-z*.3,G1],[z*1.1,G1],0,H3*.46,'#d4eef9');   /* 玄関の自動ドア (街側) */
+    for(const q of[x2+z*.2,Lp-z*.2])box(q-z*.05,yF+z*.08,z*.1,z*.1,0,h1,'#f4f6f8','#fff');   /* 張り出した2Fを支える柱 */
+    box(x2,yF,Lp-x2,yN-yF,h1,h2-H3*.05,'#f2f5f8','#f2f5f8');
+    Q([x2+z*.15,fy2],[Lp-z*.15,fy2],w0,w1,'#35546f');Q([ex2,yF+z*.15],[ex2,yN-z*.15],w0,w1,'#35546f');
+    Q([x2+z*.15,fy2],[Lp-z*.15,fy2],w0+(w1-w0)*.6,w1,'rgba(160,200,230,.35)');ML(x2+z*.15,Lp-z*.15,fy2,w0,w1,z*.6,'rgba(220,236,248,.45)');
+    Q([x2+z*.15,fy2],[Lp-z*.15,fy2],h1+T2*.7,h1+T2*.85,'#2f7de1');   /* 看板帯 */
+    box(x2-z*.1,yF-z*.1,Lp-x2+z*.2,yN-yF+z*.2,h2-H3*.05,h2,'#d3dae2','#eef1f5');
+    box(Lp-z*1.1,yF+z*.3,z*.6,z*.45,h2,h2+H3*.14,'#a9b4c0','#ced5dd');box(x2+z*.3,yF+z*.3,z*.45,z*.4,h2,h2+H3*.1,'#a9b4c0','#ced5dd');
+    const ye=Math.max(0,...pv.map(r=>r[1]));   /* 跨線橋: 2Fの床から一番遠いホームまで (ガラス張りの屋根付き通路) */
+    if(ye>0){for(const[a,b]of pv)box(-z*.3,(a+b)/2-z*.07,z*.14,z*.14,0,h1,'#6b7d92','#6b7d92');
+      box(-z*.3,yN,z*.6,ye-yN,h1-H3*.06,h1,'#7e8fa2','#9fb0c1');box(-z*.3,yN,z*.6,ye-yN,h1,h1+H3*.42,'#bfe0f0','#f3f6f9')}
+    {const ly=(yF+BD/2)*sg,[tx,ty]=T(px-Math.sin(an)*ly,py+Math.cos(an)*ly),fs=Math.max(11,Math.min(15,z*.36));
+      cx.save();cx.setTransform(dpr,0,0,dpr,0,0);cx.font=`700 ${fs}px system-ui,sans-serif`;cx.textAlign='left';cx.textBaseline='middle';
+      const lh=fs*1.8,lw=cx.measureText(name).width+lh+fs*.5,lx=tx-lw/2,cy=ty-h2-(H3>1?lh*.7:0);
+      cx.shadowColor='rgba(30,50,70,.28)';cx.shadowBlur=8;cx.shadowOffsetY=2;rr(lx,cy-lh/2,lw,lh,lh/2);cx.fillStyle='#fff';cx.fill();cx.shadowColor='transparent';
+      cx.beginPath();cx.arc(lx+lh/2,cy,fs*.52,0,7);cx.fillStyle='#2f7de1';cx.fill();cx.beginPath();cx.arc(lx+lh/2,cy,fs*.2,0,7);cx.fillStyle='#fff';cx.fill();
+      cx.fillStyle='#1f2d3d';cx.fillText(name,lx+lh,cy+.5);cx.restore()}
+  }
+  if(dtr&&R){cx.textBaseline='middle';   /* 項目の番号と、駅の停車設定を地図上に表示 */
+    R.rows.forEach((r,i)=>{const[nx,ny]=r.k.split(',').map(Number),q=Math.max(9,z*.26),d=R.rows.slice(0,i).filter(x=>x.k===r.k).length,px=X(nx)+q*1.1,py=Y(ny)+q*1.1+d*q*2.1,c=i===curN,e=ET[r.id];
+      cx.beginPath();cx.arc(px,py,q,0,7);cx.fillStyle=KC[r.sa||'b'];cx.fill();cx.strokeStyle=c?'#1fa971':'#fff';cx.lineWidth=c?4.5:2.5;cx.stroke();
+      cx.font=`700 ${Math.max(10,z*.3)}px system-ui,sans-serif`;cx.textAlign='center';cx.fillStyle='#fff';cx.fillText(i+1,px,py);
+      const t=(r.sa?SH[r.sa]+' ':'')+(e?hm(e.a):'');if(t){cx.textAlign='left';cx.lineWidth=4;cx.strokeStyle='#fff';cx.strokeText(t,px+q+3,py);cx.fillStyle=c?'#12804f':KC[r.sa||'b'];cx.fillText(t,px+q+3,py)}})}
+  if(sel&&(sel.type==='node'||sel.type==='sta')){const[nx,ny]=sel.k.split(',').map(Number);cx.beginPath();cx.arc(X(nx),Y(ny),Math.max(14,z*.42),0,7);cx.fillStyle='rgba(47,125,225,.18)';cx.fill();cx.strokeStyle='#2f7de1';cx.lineWidth=3;cx.stroke()}
+  if(tool==='sta')stPrev(X,Y,z);
+  if(fk){const[fx,fy]=fk.split(',').map(Number);cx.beginPath();cx.arc(X(fx),Y(fy),Math.max(16,z*.5),0,7);cx.strokeStyle='#1f2d3d';cx.lineWidth=4;cx.stroke()}
+  /* 敷設プレビュー / カーソル */
+  if(tool==='lay'){
+    const tg=pend||hover;
+    if(chain){
+      if(tg){const pts=route(chain.p,tg,chain.pd);cx.beginPath();
+        pts.forEach((p,i)=>i?cx.lineTo(X(p.x),Y(p.y)):cx.moveTo(X(p.x),Y(p.y)));
+        cx.strokeStyle='rgba(47,125,225,.5)';cx.lineWidth=z*.3;cx.stroke()}
+      cx.beginPath();cx.arc(X(chain.p.x),Y(chain.p.y),Math.max(7,z*.2),0,7);cx.fillStyle='#2f7de1';cx.fill();cx.strokeStyle='#fff';cx.lineWidth=2;cx.stroke();
+    }
+    if(tg){
+      const on=deg.has(tg.x+','+tg.y);
+      cx.beginPath();cx.arc(X(tg.x),Y(tg.y),pend?Math.max(11,z*.32):z*(on?.3:.14),0,7);
+      if(on||pend){cx.strokeStyle=on?'#1fa971':'#2f7de1';cx.lineWidth=3;cx.stroke()}else{cx.fillStyle='#2f7de1';cx.fill()}
+    }
+  }
+  if(hl){const e=hl.e;cx.beginPath();cx.moveTo(X(e[0]),Y(e[1]));cx.lineTo(X(e[2]),Y(e[3]));cx.strokeStyle='rgba(226,70,70,.6)';cx.lineWidth=z*.4;cx.stroke()}
+  /* 列車 (3D時は断面を積み重ねて箱型にする) */
+  const hh=H3*.5,N=hh>1?8:0,C=['#8f2e22','#a53727','#bb4130','#d6e8f6','#d6e8f6','#c9432f','#dd4c37','#e5533d'];
+  for(const t of trains){
+    const p=tpos(t),gx=X(p.x),gy=Y(p.y),an=Math.atan2(t.by-t.ay,t.bx-t.ax),
+      F=(u,f)=>{cx.save();cx.translate(gx+UPx*u,gy+UPy*u);cx.rotate(an);f();cx.restore()},B=()=>{cx.beginPath();cx.roundRect(-z*SZ.tl/2,-z*SZ.trw/2,z*SZ.tl,z*SZ.trw,z*.12)};
+    F(0,()=>{if((sel&&sel.t===t)||dtr===t){cx.beginPath();cx.roundRect(-z*(SZ.tl/2+.2),-z*(SZ.trw/2+.22),z*(SZ.tl+.4),z*(SZ.trw+.44),z*.22);cx.fillStyle='rgba(47,125,225,.22)';cx.fill();cx.strokeStyle='#2f7de1';cx.lineWidth=3;cx.stroke()}});
+    if(N){F(0,()=>{B();cx.fillStyle='rgba(30,50,70,.2)';cx.fill()});for(let i=0;i<N;i++)F(hh*i/N,()=>{B();cx.fillStyle=C[i];cx.fill()})}
+    F(hh,()=>{B();cx.fillStyle='#e5533d';cx.fill();cx.fillStyle='#fff';for(const q of[-.55,-.25,.05])cx.fillRect(z*q,-z*.1,z*.22,z*.2);cx.fillStyle='#35506b';cx.fillRect(z*.45,-z*.12,z*.15,z*.24)});
+    if(dtr){const[tx,ty]=T(gx+UPx*hh,gy+UPy*hh);cx.save();cx.setTransform(dpr,0,0,dpr,0,0);cx.font='700 12px system-ui,sans-serif';cx.textAlign='center';cx.textBaseline='bottom';cx.lineWidth=4;cx.strokeStyle='#fff';cx.strokeText(t.id,tx,ty-z*.4);cx.fillStyle=t===dtr?'#f08c1a':'#2b3a4a';cx.fillText(t.id,tx,ty-z*.4);cx.restore()}
+  }
+  cx.restore();
+}
+
+/* ---- 入力 ---- */
+const hit=(g,px)=>Math.max(g,px/cam.z);
+const ptrs=new Map(),hist=[];let pin=null,pend=null,sel=null,shown=null;
+const gs=()=>{const[a,b]=[...ptrs.values()];return{x:(a.x+b.x)/2,y:(a.y+b.y)/2,d:Math.hypot(a.x-b.x,a.y-b.y)||1,r:Math.atan2(b.y-a.y,b.x-a.x)}};
+function snap(){hist.push(JSON.stringify([[...edges.values()],[...stations],trains.map(({id,ax,ay,bx,by,t,cf,dw,iv,pid,off})=>({id,ax,ay,bx,by,t,cf,dw,iv,pid,off})),[...pl]]));if(hist.length>60)hist.shift()}
+function undo(){
+  if(!hist.length)return;
+  const[E,S,T,PL]=JSON.parse(hist.pop()),cur=new Map(trains.map(t=>[t.id,t]));edges.clear();E.forEach(e=>addE(...e));stations.clear();S.forEach(([k,n])=>stations.set(k,n));pl.clear();(PL||[]).forEach(([k,v])=>pl.set(k,v));
+  trains.length=0;(T||[]).forEach(q=>trains.push(cur.get(q.id)||q));   /* 列車も元に戻す(設定は現在のものを保持) */
+  for(let i=trains.length-1;i>=0;i--){const t=trains[i];if(!edges.has(norm(t.ax,t.ay,t.bx,t.by).join()))trains.splice(i,1)}
+  chain=pend=sel=null;relink();rebuild();
+}
+function nearJ(w,r,mn=3){let b=null;for(const[k,d]of deg){if(d<mn)continue;const[x,y]=k.split(',').map(Number),m=Math.hypot(x-w.x,y-w.y);if(m<r){r=m;b=k}}return b}
+/* 長押し選択: 列車 > 分岐点 > 線路区間 */
+function section(k0){
+  const keys=new Set([k0]),e=edges.get(k0);
+  const walk=(x,y,px,py)=>{
+    for(let g=0;g<4000;g++){
+      if(deg.get(x+','+y)!==2)return;
+      const d=DIRS.find(d=>(x+d[0]!==px||y+d[1]!==py)&&has(x,y,x+d[0],y+d[1]));
+      if(!d)return;
+      const nx=x+d[0],ny=y+d[1],k=norm(x,y,nx,ny).join();
+      if(keys.has(k))return;
+      keys.add(k);px=x;py=y;x=nx;y=ny;
+    }
+  };
+  walk(e[2],e[3],e[0],e[1]);walk(e[0],e[1],e[2],e[3]);
+  return[...keys];
+}
+function pick(w){
+  const t=trains.find(t=>{const q=tpos(t);return Math.hypot(q.x-w.x,q.y-w.y)<hit(.6,24)});
+  if(t)return{type:'train',t};
+  const sk=nearS(w,hit(.6,28));if(sk)return{type:'sta',k:sk};
+  const k=nearJ(w,hit(.6,28));
+  if(k)return{type:'node',k};
+  const n=nearEdge(w,hit(.4,18));
+  return n?{type:'edges',keys:section(n.k)}:null;
+}
+function selAct(){
+  if(!sel)return;
+  if(sel.type==='train')flip(sel.t);
+  else if(sel.type==='sta'){const n=prompt('駅名を入力',stations.get(sel.k));if(n&&n.trim()){snap();stations.set(sel.k,n.trim().slice(0,12));rebuild();shown=null}}
+}
+function selDel(){
+  if(!sel)return;
+  if(sel.type==='train')rmTrain(sel.t);
+  else{
+    snap();
+    if(sel.type==='sta')rmSta(sel.k);
+    else if(sel.type==='edges')sel.keys.forEach(delE);
+    else{const[x,y]=sel.k.split(',').map(Number);DIRS.forEach(d=>{if(has(x,y,x+d[0],y+d[1]))delE(norm(x,y,x+d[0],y+d[1]).join())})}
+    rebuild();
+  }
+  sel=null;
+}
+function panel(){
+  selEl.hidden=!sel;if(!sel)return;
+  const T=sel.type;
+  sinfoEl.textContent=T==='train'?'列車を選択中':T==='sta'?`駅「${stations.get(sel.k)}」を選択中`:T==='node'?'分岐点を選択中':`線路を選択中 (${sel.keys.length}マス)`;
+  sactEl.hidden=T==='edges'||T==='node';pstEl.hidden=T!=='sta';if(T==='sta')pcnEl.textContent=pget(sel.k)[0];psdRender();sdiaEl.hidden=T!=='train';sactlEl.textContent=T==='train'?'反転':'駅名';
+}
+function ring(){   /* 長押し中の進行リング */
+  if(!drag||!drag.tm||drag.mv||drag.lp)return;
+  const f=Math.min(1,(performance.now()-drag.t0)/450);if(f<.3)return;
+  cx.beginPath();cx.arc(drag.sx,drag.sy,24,-Math.PI/2,-Math.PI/2+Math.PI*2*f);cx.strokeStyle='#2f7de1';cx.lineWidth=4;cx.lineCap='round';cx.stroke();
+}
+function erase(e){
+  const w=s2w(e.clientX,e.clientY),i=trains.findIndex(t=>{const p=tpos(t);return Math.hypot(p.x-w.x,p.y-w.y)<hit(.6,24)});
+  if(i>=0){rmTrain(trains[i]);return}
+  const n=nearEdge(w,hit(.35,16));
+  if(n){if(drag&&!drag.sn){snap();drag.sn=true}delE(n.k);rebuild()}
+}
+function click(e,b){
+  if(b!==0){chain=pend=null;return}
+  if(sel&&tool!=='sel'){sel=null;return}   /* 最初のタップは選択解除のみ */
+  const w=s2w(e.clientX,e.clientY),p={x:Math.round(w.x),y:Math.round(w.y)};
+  if(tool==='lay'){
+    if(e.pointerType!=='mouse'&&chain&&(p.x!==chain.p.x||p.y!==chain.p.y)){
+      if(pend&&pend.x===p.x&&pend.y===p.y){pend=null;layTo(p)}else pend=p;   /* タッチは仮置き→再タップで確定 */
+    }else{pend=null;layTo(p,e.shiftKey)}
+  }
+  else if(tool==='sta'){const k=kk(p.x,p.y);
+    if(stations.has(k)){snap();rmSta(k);rebuild()}
+    else if(pn.has(k))msg('ここはホームの線路です。駅を選んで「ホーム」の番線数で変更できます');
+    else{const q=stBestC(p.x,p.y);
+      if(q.o.length){stBad={q,t:performance.now()};msg('干渉があるため駅を置けません (赤い部分)。位置をずらしてください')}
+      else{snap();q.E.forEach(e=>addE(...e));const k2=kk(q.x,q.y);stations.set(k2,nm());pl.set(k2,[1,q.di,q.bs,[q.bs>0?1:2]]);rebuild()}}}
+  else if(tool==='train')addTrain(w);
+  else if(tool==='erase')erase(e);
+  else if(tool==='sel'){const o=pick(w);sel=o&&(o.type==='train'||o.type==='sta')?o:null;
+  }
+}
+cv.addEventListener('pointerdown',e=>{
+  camT=null;try{cv.setPointerCapture(e.pointerId)}catch(_){}ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size>1){drag=null;pin=gs();return}   /* 2本指: ピンチ/移動 */
+  drag={sx:e.clientX,sy:e.clientY,lx:e.clientX,ly:e.clientY,b:e.button,mv:false,t:e.pointerType!=='mouse'};
+  if(tool==='erase'&&e.button===0&&!drag.t)erase(e);
+  if(tool!=='erase'&&e.button===0&&!(tool==='lay'&&chain)){   /* 長押しで選択 */
+    const d=drag;d.t0=performance.now();
+    d.tm=setTimeout(()=>{
+      if(drag!==d||d.mv||ptrs.size!==1)return;
+      const o=pick(s2w(d.sx,d.sy));
+      if(o){sel=o;d.lp=true;if(navigator.vibrate)navigator.vibrate(18)}
+    },450);
+  }
+});
+cv.addEventListener('pointermove',e=>{
+  if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size>1){
+    const g=gs();
+    if(pin){const a=s2w(pin.x,pin.y);if(v3)yaw+=g.r-pin.r;cam.z=Math.min(160,Math.max(5,cam.z*g.d/pin.d));const b=s2w(g.x,g.y);cam.x+=a.x-b.x;cam.y+=a.y-b.y}
+    pin=g;return;
+  }
+  const w=s2w(e.clientX,e.clientY);hover={x:Math.round(w.x),y:Math.round(w.y)};
+  posEl.textContent=`x ${hover.x}   y ${hover.y}`;
+  hl=tool==='erase'?nearEdge(w,hit(.35,16)):null;
+  if(!drag)return;
+  const er=tool==='erase'&&drag.b===0;
+  if(!drag.mv&&Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)>(drag.t?10:5))drag.mv=true;
+  if(er){if(!drag.t||drag.mv)erase(e)}
+  else if(drag.mv){if(v3&&drag.b===2){yaw+=(e.clientX-drag.lx)*.008;tilt=Math.min(.95,Math.max(.3,tilt+(e.clientY-drag.ly)*.004))}else{const a=s2w(drag.lx,drag.ly),b=s2w(e.clientX,e.clientY);cam.x+=a.x-b.x;cam.y+=a.y-b.y}}
+  drag.lx=e.clientX;drag.ly=e.clientY;
+});
+cv.addEventListener('pointerup',e=>{
+  ptrs.delete(e.pointerId);if(ptrs.size<2)pin=null;
+  if(drag)clearTimeout(drag.tm);
+  if(drag&&!drag.mv&&!drag.lp&&!(tool==='erase'&&drag.b===0&&!drag.t))click(e,drag.b);
+  drag=null;
+});
+cv.addEventListener('pointercancel',e=>{ptrs.delete(e.pointerId);pin=null;drag=null});
+cv.addEventListener('lostpointercapture',e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pin=null});addEventListener('blur',()=>{ptrs.clear();pin=null;drag=null});
+cv.addEventListener('pointerleave',e=>{hover=null;hl=null;if(e.pointerType==='mouse'&&tool==='sta')hintEl.textContent=hs()});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('wheel',e=>{
+  e.preventDefault();camT=null;const a=s2w(e.clientX,e.clientY);
+  const dy=Math.max(-300,Math.min(300,e.deltaY*(e.deltaMode===1?33:e.deltaMode===2?400:1)||0));cam.z=Math.min(160,Math.max(5,cam.z*Math.exp(-dy*.0015)));
+  const b=s2w(e.clientX,e.clientY);cam.x+=a.x-b.x;cam.y+=a.y-b.y;
+},{passive:false});
+
+const hs=()=>(coarse?HINT_T:HINT)[tool]+(v3?(coarse?' / 2本指ひねりで回転':' / 右ドラッグで回転・傾き'):'');
+function tog3(){v3=!v3;document.getElementById('v3').classList.toggle('on',v3);hintEl.textContent=hs()}
+function setTool(t){
+  tool=t;chain=pend=sel=null;hl=null;
+  document.querySelectorAll('[data-tool]').forEach(b=>b.classList.toggle('on',b.dataset.tool===t));
+  hintEl.textContent=hs();cv.style.cursor=t==='sel'?'default':'crosshair';
+}
+function toggle(){run=!run;playEl.innerHTML=ic(run?'pause':'play')+`<span class="lbl">${run?'停止':'再生'}</span>`}
+const zoom=f=>{camT=null;cam.z=Math.min(160,Math.max(5,cam.z*f))};
+document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>setTool(b.dataset.tool));
+playEl.onclick=toggle;
+document.getElementById('undo').onclick=undo;
+okEl.onclick=()=>{if(pend){const p=pend;pend=null;layTo(p)}};
+document.getElementById('done').onclick=()=>{chain=pend=null};
+const selEl=document.getElementById('selp'),sinfoEl=document.getElementById('sinfo'),sactEl=document.getElementById('sact'),sactlEl=document.getElementById('sactl'),sdiaEl=document.getElementById('sdia');
+const pstEl=document.getElementById('pst'),pcnEl=document.getElementById('pcn'),psdEl=document.getElementById('psd'),bump=d=>{if(sel&&sel.type==='sta'){setPl(sel.k,pget(sel.k)[0]+d);panel()}};
+const PT=['なし','右','左','両側'];
+function psdRender(){   /* 設定する番線を選び、その番線のホームだけ表示する (右・左は矢印の向きに進むときの右手・左手) */
+  if(!sel||sel.type!=='sta'){psdEl.hidden=true;return}
+  const[n,di,bs,sd]=pget(sel.k);if(pk!==sel.k){pk=sel.k;psel=0}psel=Math.max(0,Math.min(psel,n-1));
+  const tabs=n>1?`<span class="seg" role="group" aria-label="設定する番線">${sd.map((f,i)=>`<button data-p="${i}" aria-pressed="${i===psel}" class="${i===psel?'on':''}${f?'':' no'}">${i+1}番線</button>`).join('')}</span>`:'',
+    N=bs>0?1:2,F=3-N,sh=[psel<n-1&&(sd[psel]&F)&&(sd[psel+1]&N)?psel+2:0,psel>0&&(sd[psel]&N)&&(sd[psel-1]&F)?psel:0].filter(Boolean),isn=sh.length?`<div class="r"><span class="k">島式ホーム: ${sh.join('・')}番線と共有</span></div>`:'',
+    h=`${tabs?`<div class="r"><span class="k">向き ${'→↘↓↙'[di]}</span>${tabs}</div>`:''}<div class="r"><span class="k">${n>1?'ホーム':`向き ${'→↘↓↙'[di]}・ホーム`}</span><span class="seg" role="group" aria-label="${psel+1}番線のホーム">${PT.map((t,v)=>`<button data-f="${v}" aria-pressed="${v===sd[psel]}" class="${v===sd[psel]?'on':''}">${t}</button>`).join('')}</span></div>${isn}<button id="pfl" title="駅舎を反対側へ移す">駅舎⇄</button>`;
+  psdEl.hidden=false;if(psdEl.dataset.h!==h){psdEl.dataset.h=h;psdEl.innerHTML=h}
+}
+psdEl.onclick=e=>{const b=e.target.closest('button');if(!b||!sel||sel.type!=='sta')return;
+  if(b.dataset.p!==undefined){psel=+b.dataset.p;psdRender();return}
+  if(b.dataset.f!==undefined){const[n,,bs,sd]=pget(sel.k),v=sd.slice(),N=bs>0?1:2,F=3-N;v[psel]=+b.dataset.f;if(psel<n-1)v[psel+1]=(v[psel+1]&~N)|(v[psel]&F?N:0);if(psel>0)v[psel-1]=(v[psel-1]&~F)|(v[psel]&N?F:0);setPl(sel.k,n,0,v);panel();return}
+  if(b.id==='pfl'){const[n,,bs]=pget(sel.k);setPl(sel.k,n,-bs);panel()}};
+document.getElementById('pm').onclick=()=>bump(-1);document.getElementById('pp').onclick=()=>bump(1);
+sactEl.onclick=selAct;sdiaEl.onclick=()=>{if(sel&&sel.type==='train')openDia(sel.t)};document.getElementById('sdel').onclick=selDel;document.getElementById('sx').onclick=()=>{sel=null};
+document.getElementById('spd').oninput=e=>speed=+e.target.value;
+clkEl.onchange=()=>{const v=clkEl.value.split(':').map(Number);if(v.length<2||v.some(isNaN))return;clock=v[0]*3600+v[1]*60+(v[2]||0);trains.forEach(t=>{t.w=null;t.ld={};if(t.pid!=null){t.w=clock+(t.off||0);t.wk=''}})};
+document.getElementById('zi').onclick=()=>zoom(1.25);
+document.getElementById('zo').onclick=()=>zoom(.8);
+document.getElementById('home').onclick=()=>{camT={x:0,y:0,z:40};yaw=-.6;tilt=.66};
+document.getElementById('v3').onclick=tog3;
+document.getElementById('clr').onclick=()=>{if(confirm('すべての線路と列車を削除しますか？')){snap();edges.clear();trains.length=0;stations.clear();pl.clear();chain=pend=sel=null;closeDia();rebuild()}};
+document.addEventListener('click',e=>{const b=e.target.closest('button');if(b)b.blur()});
+addEventListener('keydown',e=>{
+  if(e.key==='Escape'){chain=pend=sel=null;closeDia();return}
+  if(/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName))return;
+  const k=(e.key||'').toLowerCase();
+  if(e.ctrlKey||e.metaKey||e.altKey){if(k==='z'){e.preventDefault();undo()}return}
+  if(k==='escape'){chain=pend=sel=null;closeDia()}
+  else if(k==='v')setTool('sel');else if(k==='l')setTool('lay');else if(k==='e')setTool('erase');else if(k==='t')setTool('train');else if(k==='s')setTool('sta');else if(k==='3')tog3();else if(k==='d')dopen();
+  else if(k===' '){e.preventDefault();if(!e.repeat)toggle()}
+});
+function resize(){dpr=Math.min(2,devicePixelRatio||1);W=innerWidth;H=innerHeight;cv.width=glc.width=Math.round(W*dpr);cv.height=glc.height=Math.round(H*dpr)}
+addEventListener('resize',resize);
+
+/* ---- 初期化 ---- */
+resize();
+if(!load()){
+  const L=P=>{let pd=-1;for(let i=1;i<P.length;i++)pd=lay({x:P[i-1][0],y:P[i-1][1]},{x:P[i][0],y:P[i][1]},pd)};
+  L([[-6,-3],[4,-3],[7,0],[4,3],[-6,3],[-9,0],[-6,-3]]);
+  L([[-2,-3],[1,-6],[5,-6]]);
+  [['2,-3','駅1'],['0,3','駅2'],['5,-6','駅3']].forEach(([k,n])=>stations.set(k,n));rebuild();setPl('0,3',2);hist.length=0;addTrain({x:0,y:-3});
+}else rebuild();
+setTool('lay');toggle();toggle();
+let last=performance.now();
+(function loop(n){requestAnimationFrame(loop);const dt=Math.max(0,Math.min(.1,(n-last)/1000));last=n;try{relink();if(run)step(dt)}catch(e){fail(e)}try{
+  if(chain)sel=null;
+  if(sel&&(sel.type==='train'?!trains.includes(sel.t):sel.type==='sta'?!stations.has(sel.k):sel.type==='node'?(deg.get(sel.k)||0)<3:!(sel.keys=sel.keys.filter(k=>edges.has(k))).length))sel=null;
+  if(sel!==shown){shown=sel;panel()}
+  camStep();dSync();dopenEl.classList.toggle('on',!!dtr);const bz=!!(dtr||sel);document.body.classList.toggle('busy',bz);hintEl.hidden=bz&&performance.now()-mT>4500;if(document.activeElement!==clkEl){const s=hms(clock);if(clkEl.value!==s)clkEl.value=s}actEl.hidden=!chain;okEl.hidden=!pend}catch(e){fail(e)}try{draw();ring()}catch(e){fail(e);cv.width=cv.width}})(last);
+</script>
+</body>
+</html>
